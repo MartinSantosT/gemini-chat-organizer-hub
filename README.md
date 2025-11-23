@@ -31,6 +31,7 @@ So, I built Gemini Knowledge Hub.
 ⭐ Favorites: Pin your "Gold Mine" chats with a single click.
 
 📊 Live Stats: See a breakdown of your ideas, pins, and archived projects at a glance.
+
 <br>
 🛠️ <b>How to Use</b>
 
@@ -50,7 +51,8 @@ Since the entire app is just one file (index.html), you can save it in your OneD
 
 Result: You can access your board from your laptop, desktop, or work PC instantly. Everything stays in sync via your cloud provider.
 
-📸 Workflow for Power Users
+<br>
+📸 <b>Workflow for Power Users</b>
 
 Export your Chat: In Gemini, click "Share" -> "Create Public Link" (for the Cloud Link).
 
@@ -77,6 +79,7 @@ Phosphor Icons
 MIT License. Feel free to fork, modify, and make it your own!
 
 Built with ❤️ (and a lot of help from Gemini) by Martin Santos Temponi
+
 
 
 
