@@ -14,7 +14,7 @@ I tried Notion, Obsidian, and Trello, but they felt too heavy for simply saving 
 
 So, I built Gemini Knowledge Hub.
 
-✨ Features </b>
+✨ <b>Features </b>
 
 📂 Zero Installation: It's just ONE HTML file. No servers, no databases, no command line. Just download and double-click.
 
@@ -75,4 +75,5 @@ Phosphor Icons
 MIT License. Feel free to fork, modify, and make it your own!
 
 Built with ❤️ (and a lot of help from Gemini) by Martin Santos Temponi
+
 
