@@ -45,7 +45,8 @@ Open it in any modern browser (Chrome, Edge, Firefox).
 
 Click "+ New Chat" to start organizing!
 
-☁️ Pro Tip: Sync with OneDrive / Dropbox / Google Drive
+<br>
+☁️ <b>Pro Tip: Sync with OneDrive / Dropbox / Google Drive</b>
 
 Since the entire app is just one file (index.html), you can save it in your OneDrive or Dropbox folder.
 
@@ -64,7 +65,8 @@ Track it: Add a checklist of next steps (e.g., "Test prompt", "Refine code").
 
 Find it: Use the filters or search bar to find that one prompt you wrote 3 months ago.
 
-💻 Tech Stack
+<br>
+💻 <b>Tech Stack</b>
 
 HTML5
 
@@ -74,11 +76,13 @@ Tailwind CSS (via CDN)
 
 Phosphor Icons
 
-📄 License
+<br>
+📄 <b>License</b>
 
 MIT License. Feel free to fork, modify, and make it your own!
 
 Built with ❤️ (and a lot of help from Gemini) by Martin Santos Temponi
+
 
 
 
