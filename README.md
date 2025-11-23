@@ -5,7 +5,7 @@ Your AI Second Brain. A single-file, local-first Kanban board to organize your G
 <div align="center">
 <img src="screenshot.png" alt="Gemini Hub Screenshot" width="100%" style="border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
 </div>
-
+<br>
 🚀 <b>Why I built this?</b>
 
 
@@ -16,7 +16,7 @@ I tried Notion, Obsidian, and Trello, but they felt too heavy for simply saving 
 So, I built Gemini Knowledge Hub.
 
 ✨ <b>Features </b>
-
+<br>
 📂 Zero Installation: It's just ONE HTML file. No servers, no databases, no command line. Just download and double-click.
 
 🔒 Local-First Privacy: All your data lives in your browser's localStorage. Nothing is sent to the cloud.
@@ -76,6 +76,7 @@ Phosphor Icons
 MIT License. Feel free to fork, modify, and make it your own!
 
 Built with ❤️ (and a lot of help from Gemini) by Martin Santos Temponi
+
 
 
 
