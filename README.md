@@ -2,7 +2,6 @@
 
 Your AI Second Brain. A single-file, local-first Kanban board to organize your Gemini chats, prompts, and projects.
 
-
 🚀 Why I built this?
 
 I use Google Gemini daily, but I kept losing track of my best conversations. I had brilliant prompts and complex project discussions buried under a pile of "Untitled Chats" in my history.
@@ -10,7 +9,6 @@ I use Google Gemini daily, but I kept losing track of my best conversations. I h
 I tried Notion, Obsidian, and Trello, but they felt too heavy for simply saving chat links. I needed something fast, private, and visual.
 
 So, I built Gemini Knowledge Hub.
-
 
 ✨ Features
 
@@ -28,7 +26,6 @@ So, I built Gemini Knowledge Hub.
 
 📊 Live Stats: See a breakdown of your ideas, pins, and archived projects at a glance.
 
-
 🛠️ How to Use
 
 Download the index.html file from this repository.
@@ -41,13 +38,11 @@ Open it in any modern browser (Chrome, Edge, Firefox).
 
 Click "+ New Chat" to start organizing!
 
-
 ☁️ Pro Tip: Sync with OneDrive / Dropbox / Google Drive
 
 Since the entire app is just one file (index.html), you can save it in your OneDrive or Dropbox folder.
 
 Result: You can access your board from your laptop, desktop, or work PC instantly. Everything stays in sync via your cloud provider.
-
 
 📸 Workflow for Power Users
 
@@ -61,7 +56,6 @@ Track it: Add a checklist of next steps (e.g., "Test prompt", "Refine code").
 
 Find it: Use the filters or search bar to find that one prompt you wrote 3 months ago.
 
-
 💻 Tech Stack
 
 HTML5
@@ -72,8 +66,8 @@ Tailwind CSS (via CDN)
 
 Phosphor Icons
 
-
 📄 License
 
 MIT License. Feel free to fork, modify, and make it your own!
+
 Built with ❤️ (and a lot of help from Gemini) by Martin Santos Temponi
