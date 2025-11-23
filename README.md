@@ -2,6 +2,10 @@
 
 Your AI Second Brain. A single-file, local-first Kanban board to organize your Gemini chats, prompts, and projects.
 
+<div align="center">
+<img src="screenshot.png" alt="Gemini Hub Screenshot" width="100%" style="border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+</div>
+
 🚀 Why I built this?
 
 I use Google Gemini daily, but I kept losing track of my best conversations. I had brilliant prompts and complex project discussions buried under a pile of "Untitled Chats" in my history.
