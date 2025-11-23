@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Knowledge Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        
+        /* Smooth Transitions */
+        .card-base { transition: all 0.2s ease; cursor: grab; }
+        .card-base:active { cursor: grabbing; }
+        
+        /* Column Border Colors */
+        .card-idea { border-left: 5px solid #9333ea; background: white; }
+        .card-pinned { border-left: 5px solid #f59e0b; background: white; }
+        .card-important { border-left: 5px solid #3b82f6; background: white; }
+        .card-reference { border-left: 5px solid #9ca3af; background: white; }
+        
+        .card-hover:hover { transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+
+        .dragging { opacity: 0.5; transform: scale(0.95); border: 2px dashed #6366f1; }
+        .drop-zone-active { background-color: #e0e7ff !important; border-color: #818cf8 !important; }
+        
+        /* Custom Scrollbars */
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+
+        .tag-active { background-color: #4f46e5 !important; color: white !important; border-color: #4f46e5 !important; }
+        
+        #tag-suggestions { max-height: 150px; overflow-y: auto; }
+        .suggestion-item:hover { background-color: #f3f4f6; color: #4f46e5; }
+
+        .task-checkbox:checked + span { text-decoration: line-through; color: #9ca3af; }
+        
+        /* Manual Prose Styles */
+        .manual-content h2 { color: #4f46e5; font-weight: bold; font-size: 1.25rem; margin-top: 1.5rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .manual-content p { margin-bottom: 0.75rem; color: #374151; }
+        .manual-content ul { padding-left: 1.5rem; margin-bottom: 1rem; list-style-type: disc; }
+        .manual-content li { margin-bottom: 0.25rem; }
+    </style>
+</head>
+<body class="text-gray-800 h-screen flex flex-col overflow-hidden select-none">
+
+    <!-- Header -->
+    <div class="bg-indigo-900 text-white p-4 flex justify-between items-center shadow-lg shrink-0 z-20">
+        <!-- Logo -->
+        <div class="flex items-center gap-3 min-w-max">
+            <div class="bg-white/10 p-2 rounded-lg">
+                <i class="ph-fill ph-kanban text-2xl text-indigo-300"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-wide flex items-center gap-2">
+                    Gemini Hub <span class="text-[10px] bg-teal-500 px-1.5 py-0.5 rounded text-white tracking-widest font-mono">v1.0</span>
+                </h1>
+                <p class="text-xs text-indigo-200">Local AI Knowledge Base</p>
+            </div>
+        </div>
+
+        <!-- Stats & Manual -->
+        <div class="hidden md:flex items-center gap-4 bg-indigo-800/50 px-4 py-1.5 rounded-lg border border-indigo-700/50 shadow-inner">
+            <!-- Dynamic Stats -->
+            <div class="flex items-center gap-4 text-xs font-medium text-indigo-100" id="header-stats">
+                <span class="animate-pulse">Loading...</span>
+            </div>
+
+            <div class="w-px h-5 bg-indigo-600"></div>
+
+            <!-- Manual Button -->
+            <button onclick="openManual()" class="flex items-center gap-2 text-xs font-bold text-indigo-200 hover:text-white transition-colors hover:bg-indigo-700/50 px-2 py-1 rounded">
+                <i class="ph-bold ph-book-open text-lg"></i> MANUAL
+            </button>
+        </div>
+
+        <button onclick="openModal()" class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition shadow-md border border-indigo-400 min-w-max">
+            <i class="ph-bold ph-plus"></i> New Chat
+        </button>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="bg-white border-b border-gray-200 px-6 py-2 flex items-center justify-between gap-2 overflow-x-auto shrink-0 shadow-sm z-10">
+        <div class="flex items-center gap-2 overflow-x-auto no-scrollbar">
+            <span class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1 mr-2 shrink-0">
+                <i class="ph-bold ph-funnel"></i> Topics:
+            </span>
+            <div id="tag-filters" class="flex gap-2 items-center"></div>
+        </div>
+
+        <!-- Status Buttons (Right) -->
+        <div class="flex gap-2 items-center pl-4 border-l border-gray-200 shrink-0" id="status-filters">
+            <!-- Injected dynamically -->
+        </div>
+    </div>
+
+    <!-- Main Board -->
+    <div class="flex-1 overflow-x-auto overflow-y-hidden p-6 bg-gray-50">
+        <div class="flex gap-4 h-full min-w-[1300px]">
+            <!-- IDEAS -->
+            <div class="w-1/4 flex flex-col h-full">
+                <div class="flex items-center gap-2 mb-3 text-purple-600 font-bold bg-purple-50 p-3 rounded-t-xl border-b border-purple-100 shadow-sm">
+                    <i class="ph-fill ph-lightbulb text-xl"></i> <h2>IDEAS</h2> <span id="count-idea" class="ml-auto bg-white border border-purple-200 text-purple-800 text-xs px-2 py-0.5 rounded-full shadow-sm font-mono">0</span>
+                </div>
+                <div id="col-idea" class="flex-1 bg-gray-100 rounded-b-xl border border-gray-200 p-3 overflow-y-auto custom-scroll space-y-3 transition-colors" ondrop="drop(event, 'idea')" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)"></div>
+            </div>
+            <!-- PINS -->
+            <div class="w-1/4 flex flex-col h-full">
+                <div class="flex items-center gap-2 mb-3 text-amber-600 font-bold bg-amber-50 p-3 rounded-t-xl border-b border-amber-100 shadow-sm">
+                    <i class="ph-fill ph-push-pin text-xl"></i> <h2>PINS</h2> <span id="count-pin" class="ml-auto bg-white border border-amber-200 text-amber-800 text-xs px-2 py-0.5 rounded-full shadow-sm font-mono">0</span>
+                </div>
+                <div id="col-pinned" class="flex-1 bg-gray-100 rounded-b-xl border border-gray-200 p-3 overflow-y-auto custom-scroll space-y-3 transition-colors" ondrop="drop(event, 'pinned')" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)"></div>
+            </div>
+            <!-- PROJECTS -->
+            <div class="w-1/4 flex flex-col h-full">
+                <div class="flex items-center gap-2 mb-3 text-blue-600 font-bold bg-blue-50 p-3 rounded-t-xl border-b border-blue-100 shadow-sm">
+                    <i class="ph-fill ph-star text-xl"></i> <h2>PROJECTS</h2> <span id="count-imp" class="ml-auto bg-white border border-blue-200 text-blue-800 text-xs px-2 py-0.5 rounded-full shadow-sm font-mono">0</span>
+                </div>
+                <div id="col-important" class="flex-1 bg-gray-100 rounded-b-xl border border-gray-200 p-3 overflow-y-auto custom-scroll space-y-3 transition-colors" ondrop="drop(event, 'important')" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)"></div>
+            </div>
+            <!-- ARCHIVE -->
+            <div class="w-1/4 flex flex-col h-full">
+                <div class="flex items-center gap-2 mb-3 text-gray-600 font-bold bg-gray-100 p-3 rounded-t-xl border-b border-gray-200 shadow-sm">
+                    <i class="ph-fill ph-archive text-xl"></i> <h2>ARCHIVE</h2> <span id="count-ref" class="ml-auto bg-white border border-gray-300 text-gray-700 text-xs px-2 py-0.5 rounded-full shadow-sm font-mono">0</span>
+                </div>
+                <div class="bg-gray-100 px-3 pb-2 border-x border-gray-200">
+                    <div class="relative group">
+                         <i class="ph-bold ph-magnifying-glass absolute left-3 top-2.5 text-gray-400 group-focus-within:text-indigo-500"></i>
+                         <input type="text" id="searchInput" onkeyup="renderChats()" placeholder="Search..." class="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-sm">
+                    </div>
+                </div>
+                <div id="col-reference" class="flex-1 bg-gray-100 rounded-b-xl border border-gray-200 p-3 overflow-y-auto custom-scroll space-y-2 transition-colors" ondrop="drop(event, 'reference')" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL EDITOR -->
+    <div id="addModal" class="fixed inset-0 bg-indigo-900 bg-opacity-40 hidden flex items-center justify-center backdrop-blur-sm z-50">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 transform transition-all scale-100 border border-gray-200 max-h-[95vh] overflow-y-auto" onclick="closeSuggestions()">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2" id="modalTitle">
+                    <i class="ph-duotone ph-file-html text-indigo-600"></i> Add Chat
+                </h2>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600"><i class="ph-bold ph-x text-xl"></i></button>
+            </div>
+            
+            <form id="chatForm" onsubmit="handleFormSubmit(event)">
+                <input type="hidden" id="editId" value="">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Title</label>
+                        <input type="text" id="inputTitle" required class="block w-full border border-gray-300 rounded-lg shadow-sm p-2.5 focus:ring-indigo-500 focus:border-indigo-500 transition-colors font-bold text-gray-800" placeholder="Ex: Python Script Generator">
+                    </div>
+
+                    <div class="relative">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Tags</label>
+                        <div class="flex flex-wrap gap-2 p-2 border border-gray-300 rounded-lg shadow-sm bg-white focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500">
+                            <div id="activeTagsContainer" class="flex flex-wrap gap-2"></div>
+                            <input type="text" id="inputTags" autocomplete="off" class="flex-grow min-w-[100px] outline-none text-sm text-gray-700 placeholder-gray-400" placeholder="Type and press Enter..." oninput="showSuggestions()" onfocus="showSuggestions()" onkeydown="handleTagInput(event)">
+                        </div>
+                        <div id="tag-suggestions" class="hidden absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50"></div>
+                    </div>
+
+                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex justify-between">
+                            <span>Task List</span>
+                            <span class="text-indigo-500 text-[10px] bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">Enter to add</span>
+                        </label>
+                        <div class="flex gap-2 mb-2">
+                            <input type="text" id="newTaskInput" class="block w-full border border-gray-300 rounded-lg shadow-sm p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="Add new task..." onkeypress="handleTaskEnter(event)">
+                            <button type="button" onclick="addModalTask()" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-3 transition-colors shadow-sm"><i class="ph-bold ph-plus"></i></button>
+                        </div>
+                        <ul id="taskList" class="space-y-1.5 max-h-48 overflow-y-auto pr-1"></ul>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Local HTML File</label>
+                            <div class="relative">
+                                <input type="text" id="inputPath" class="block w-full border border-gray-300 rounded-lg shadow-sm p-2.5 pr-8 font-mono text-xs bg-white focus:ring-indigo-500 focus:border-indigo-500" placeholder="my_chat.html">
+                                <i class="ph-bold ph-desktop absolute right-3 top-3 text-gray-400"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Gemini Cloud Link</label>
+                            <div class="relative">
+                                <input type="url" id="inputLink" class="block w-full border border-gray-300 rounded-lg shadow-sm p-2.5 pr-8 font-mono text-xs bg-white focus:ring-indigo-500 focus:border-indigo-500 text-blue-600" placeholder="https://...">
+                                <i class="ph-bold ph-cloud absolute right-3 top-3 text-gray-400"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Priority</label>
+                        <div class="grid grid-cols-4 gap-2 mt-1">
+                            <label class="cursor-pointer relative">
+                                <input type="radio" name="priority" value="idea" class="peer sr-only" required>
+                                <div class="text-center py-2 border rounded-md bg-white text-gray-500 hover:bg-purple-50 peer-checked:bg-purple-100 peer-checked:border-purple-500 peer-checked:text-purple-800 transition-all text-xs font-bold flex flex-col items-center"><i class="ph-fill ph-lightbulb text-lg mb-1"></i> Idea</div>
+                            </label>
+                            <label class="cursor-pointer relative">
+                                <input type="radio" name="priority" value="pinned" class="peer sr-only">
+                                <div class="text-center py-2 border rounded-md bg-white text-gray-500 hover:bg-amber-50 peer-checked:bg-amber-100 peer-checked:border-amber-500 peer-checked:text-amber-800 transition-all text-xs font-bold flex flex-col items-center"><i class="ph-fill ph-push-pin text-lg mb-1"></i> Pin</div>
+                            </label>
+                            <label class="cursor-pointer relative">
+                                <input type="radio" name="priority" value="important" class="peer sr-only">
+                                <div class="text-center py-2 border rounded-md bg-white text-gray-500 hover:bg-blue-50 peer-checked:bg-blue-100 peer-checked:border-blue-500 peer-checked:text-blue-800 transition-all text-xs font-bold flex flex-col items-center"><i class="ph-fill ph-star text-lg mb-1"></i> Proj.</div>
+                            </label>
+                            <label class="cursor-pointer relative">
+                                <input type="radio" name="priority" value="reference" class="peer sr-only">
+                                <div class="text-center py-2 border rounded-md bg-white text-gray-500 hover:bg-gray-50 peer-checked:bg-gray-200 peer-checked:border-gray-500 peer-checked:text-gray-800 transition-all text-xs font-bold flex flex-col items-center"><i class="ph-fill ph-archive text-lg mb-1"></i> Arch.</div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Notes</label>
+                        <textarea id="inputDesc" class="block w-full border border-gray-300 rounded-lg shadow-sm p-2.5 text-sm focus:ring-indigo-500 focus:border-indigo-500" rows="2" placeholder="Details, prompts, ideas..."></textarea>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-3 pt-4 border-t border-gray-100">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors">Cancel</button>
+                    <button type="submit" class="px-6 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-md transform hover:scale-[1.02] transition-all">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL MANUAL -->
+    <div id="manualModal" class="fixed inset-0 bg-black bg-opacity-60 hidden flex items-center justify-center backdrop-blur-sm z-50">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col transform transition-all scale-100 border border-gray-200">
+            <div class="flex justify-between items-center p-5 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-white rounded-t-xl">
+                <h2 class="text-2xl font-bold text-indigo-900 flex items-center gap-2">
+                    <i class="ph-fill ph-book-open text-indigo-600"></i> Gemini Hub User Manual
+                </h2>
+                <button onclick="closeManual()" class="text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 p-2 rounded-full transition"><i class="ph-bold ph-x text-2xl"></i></button>
+            </div>
+            
+            <div class="p-8 overflow-y-auto custom-scroll manual-content bg-white">
+                <!-- Intro -->
+                <div class="mb-10">
+                    <p class="text-lg text-gray-600 leading-relaxed">
+                        Welcome to your <strong>Personal Knowledge Operating System</strong>. This tool centralizes all your Gemini chats, prompts, and AI projects in one secure, local dashboard.
+                    </p>
+                    <div class="flex gap-4 mt-4">
+                        <div class="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg text-sm flex-1">
+                            <strong><i class="ph-bold ph-hard-drives"></i> 100% Local:</strong> All data is stored in your browser's LocalStorage. Nothing is sent to the cloud.
+                        </div>
+                        <div class="bg-purple-50 border border-purple-200 text-purple-800 px-4 py-3 rounded-lg text-sm flex-1">
+                            <strong><i class="ph-bold ph-arrows-clockwise"></i> Sync Ready:</strong> Store this HTML file in OneDrive/Dropbox to sync across devices.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 1: Board -->
+                <h2>1. The Board Structure</h2>
+                <p>The workspace is divided into 4 logical columns. Drag and drop cards to move them.</p>
+                
+                <div class="grid grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white border-l-4 border-purple-500 p-3 rounded shadow-sm">
+                        <div class="text-purple-700 font-bold text-sm mb-1"><i class="ph-fill ph-lightbulb"></i> IDEAS</div>
+                        <p class="text-xs text-gray-500">Backlog. Quick thoughts or prompts to test later.</p>
+                    </div>
+                    <div class="bg-white border-l-4 border-amber-500 p-3 rounded shadow-sm">
+                        <div class="text-amber-700 font-bold text-sm mb-1"><i class="ph-fill ph-push-pin"></i> PINS</div>
+                        <p class="text-xs text-gray-500">High Priority. What you are working on TODAY.</p>
+                    </div>
+                    <div class="bg-white border-l-4 border-blue-500 p-3 rounded shadow-sm">
+                        <div class="text-blue-700 font-bold text-sm mb-1"><i class="ph-fill ph-star"></i> PROJECTS</div>
+                        <p class="text-xs text-gray-500">Active medium-term conversations.</p>
+                    </div>
+                    <div class="bg-white border-l-4 border-gray-500 p-3 rounded shadow-sm">
+                        <div class="text-gray-700 font-bold text-sm mb-1"><i class="ph-fill ph-archive"></i> ARCHIVE</div>
+                        <p class="text-xs text-gray-500">Reference material and closed chats.</p>
+                    </div>
+                </div>
+
+                <!-- Section 2: Creation -->
+                <h2>2. Adding a New Project</h2>
+                <p>Click the <strong>"+ New Chat"</strong> button at the top right.</p>
+                <ul>
+                    <li><strong>Title:</strong> The name of your project or chat topic.</li>
+                    <li><strong>Local HTML File:</strong> If you downloaded the chat (`Ctrl+S`), enter the filename here (e.g., `my_chat.html`). Must be in the same folder.</li>
+                    <li><strong>Cloud Link:</strong> The public sharing link from Gemini.</li>
+                </ul>
+
+                <!-- Section 3: Card Anatomy -->
+                <h2>3. Card Anatomy</h2>
+                <p>Each card is a smart control center:</p>
+                <ul>
+                    <li><strong>Title Click:</strong> Opens the <strong>Local</strong> file (fast & private).</li>
+                    <li><strong>Cloud Icon:</strong> Opens the <strong>Gemini Cloud</strong> link (to continue chatting).</li>
+                    <li><strong><span class="text-red-500">⚠️ PENDING</span> Badge:</strong> Appears if you have unchecked tasks.</li>
+                    <li><strong><span class="text-yellow-500">⭐ Star</span>:</strong> Marks the project as a Favorite.</li>
+                </ul>
+
+                <!-- Section 4: Automation -->
+                <h2>4. Smart Automation</h2>
+                <h3>🤖 Auto-Tag "Pending"</h3>
+                <p>If you add items to the <strong>Task List</strong> and leave them unchecked, a red alert badge appears automatically. When you complete all tasks, it disappears.</p>
+
+                <h3>🏷️ Smart Tags</h3>
+                <p>In the "Tags" field, type and press <strong>Enter</strong>. The system creates colored chips and remembers your previous tags for auto-completion.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let chats = JSON.parse(localStorage.getItem('geminiHubChats')) || [];
+        let activeTag = null;
+        let currentEditingTasks = [];
+        let currentEditingTags = []; 
+
+        function init() { 
+            updateAutoTags(); 
+            renderChats(); 
+        }
+
+        // --- MANUAL CONTROLS ---
+        function openManual() { document.getElementById('manualModal').classList.remove('hidden'); }
+        function closeManual() { document.getElementById('manualModal').classList.add('hidden'); }
+        document.getElementById('manualModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('manualModal')) closeManual();
+        });
+
+        function updateAutoTags() {
+            let changed = false;
+            chats.forEach(chat => {
+                if (!chat.tags) chat.tags = [];
+                const hasPending = chat.tasks && chat.tasks.some(t => !t.done);
+                // Use English tag "Pending"
+                const pendingIndex = chat.tags.findIndex(t => t.toLowerCase() === 'pending' || t.toLowerCase() === 'pendientes');
+                
+                if (hasPending && pendingIndex === -1) { 
+                    chat.tags.push('Pending'); 
+                    changed = true; 
+                } else if (!hasPending && pendingIndex !== -1) { 
+                    chat.tags.splice(pendingIndex, 1); 
+                    changed = true; 
+                }
+            });
+            if (changed) saveData();
+        }
+
+        // --- HEADER STATS ---
+        function updateHeaderStats(counts) {
+            const total = chats.length;
+            const statsContainer = document.getElementById('header-stats');
+            statsContainer.innerHTML = `
+                <span class="font-bold text-indigo-200">Total: ${total}</span>
+                <span class="mx-3 text-indigo-500/50 text-lg">|</span>
+                <div class="flex gap-4">
+                    <span title="Ideas" class="flex items-center gap-1.5"><i class="ph-fill ph-lightbulb text-purple-400 text-lg"></i> Ideas: <span class="font-bold text-white">${counts.idea}</span></span>
+                    <span title="Pins" class="flex items-center gap-1.5"><i class="ph-fill ph-push-pin text-amber-400 text-lg"></i> Pins: <span class="font-bold text-white">${counts.pinned}</span></span>
+                    <span title="Projects" class="flex items-center gap-1.5"><i class="ph-fill ph-star text-blue-400 text-lg"></i> Proj: <span class="font-bold text-white">${counts.important}</span></span>
+                    <span title="Archive" class="flex items-center gap-1.5"><i class="ph-fill ph-archive text-gray-400 text-lg"></i> Arch: <span class="font-bold text-white">${counts.reference}</span></span>
+                </div>
+            `;
+        }
+
+        function linkify(text) {
+            if (!text) return '';
+            return text.replace(/(https?:\/\/[^\s]+)/g, url => `<a href="${url}" target="_blank" class="text-blue-600 hover:underline break-all relative z-10" onclick="event.stopPropagation()">${url}</a>`);
+        }
+
+        function renderTaskEditor() {
+            const list = document.getElementById('taskList');
+            list.innerHTML = '';
+            if (currentEditingTasks.length === 0) {
+                list.innerHTML = '<li class="text-xs text-gray-400 italic text-center py-2">No pending tasks.</li>';
+                return;
+            }
+            currentEditingTasks.forEach((task, index) => {
+                const li = document.createElement('li');
+                li.className = 'flex items-center gap-2 bg-white p-2 rounded border border-gray-200 hover:border-indigo-300 transition-colors group';
+                li.innerHTML = `<input type="checkbox" class="task-checkbox cursor-pointer text-indigo-600 focus:ring-indigo-500 rounded" ${task.done ? 'checked' : ''} onchange="toggleModalTask(${index})"><span class="flex-1 text-sm text-gray-700 truncate select-text">${task.text}</span><button type="button" onclick="removeModalTask(${index})" class="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><i class="ph-bold ph-x"></i></button>`;
+                list.appendChild(li);
+            });
+        }
+
+        function addModalTask() {
+            const input = document.getElementById('newTaskInput');
+            const text = input.value.trim();
+            if (text) { currentEditingTasks.push({ text: text, done: false }); input.value = ''; renderTaskEditor(); input.focus(); }
+        }
+        function handleTaskEnter(e) { if (e.key === 'Enter') { e.preventDefault(); addModalTask(); } }
+        function toggleModalTask(index) { currentEditingTasks[index].done = !currentEditingTasks[index].done; renderTaskEditor(); }
+        function removeModalTask(index) { currentEditingTasks.splice(index, 1); renderTaskEditor(); }
+
+        function renderEditingTags() {
+            const container = document.getElementById('activeTagsContainer');
+            container.innerHTML = '';
+            currentEditingTags.forEach((tag, index) => {
+                const chip = document.createElement('div');
+                chip.className = 'flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-700 text-xs font-medium rounded-full';
+                chip.innerHTML = `<span>#${tag}</span><button type="button" onclick="removeEditingTag(${index})" class="hover:text-indigo-900 focus:outline-none"><i class="ph-bold ph-x"></i></button>`;
+                container.appendChild(chip);
+            });
+        }
+        function addEditingTag(tag) { tag = tag.trim(); if (tag && !currentEditingTags.includes(tag)) { currentEditingTags.push(tag); renderEditingTags(); } document.getElementById('inputTags').value = ''; document.getElementById('tag-suggestions').classList.add('hidden'); }
+        function removeEditingTag(index) { currentEditingTags.splice(index, 1); renderEditingTags(); }
+        function handleTagInput(e) { if (e.key === 'Enter') { e.preventDefault(); if (e.target.value.trim()) addEditingTag(e.target.value.trim()); } if (e.key === 'Backspace' && e.target.value === '' && currentEditingTags.length > 0) removeEditingTag(currentEditingTags.length - 1); }
+
+        function getAllTags() { const all = new Set(); chats.forEach(c => { if(c.tags) c.tags.forEach(t => all.add(t)); }); return Array.from(all).sort(); }
+        function showSuggestions() {
+            const input = document.getElementById('inputTags');
+            const val = input.value.trim().toLowerCase();
+            const filtered = getAllTags().filter(tag => !currentEditingTags.includes(tag) && (!val || tag.toLowerCase().includes(val)));
+            const box = document.getElementById('tag-suggestions');
+            if (filtered.length === 0) { box.classList.add('hidden'); return; }
+            box.innerHTML = '';
+            filtered.forEach(tag => {
+                const div = document.createElement('div'); div.className = 'suggestion-item px-4 py-2 cursor-pointer text-sm text-gray-700'; div.innerText = tag;
+                div.onclick = (e) => { e.stopPropagation(); addEditingTag(tag); input.focus(); }; box.appendChild(div);
+            });
+            box.classList.remove('hidden');
+        }
+        function closeSuggestions() { setTimeout(() => document.getElementById('tag-suggestions').classList.add('hidden'), 200); }
+
+        function drag(ev, id) { ev.dataTransfer.setData("text/plain", id); setTimeout(() => ev.target.classList.add('dragging'), 0); }
+        function dragEnd(ev) { ev.target.classList.remove('dragging'); document.querySelectorAll('.drop-zone-active').forEach(el => el.classList.remove('drop-zone-active')); }
+        function allowDrop(ev) { ev.preventDefault(); ev.currentTarget.classList.add('drop-zone-active'); }
+        function leaveDrop(ev) { ev.currentTarget.classList.remove('drop-zone-active'); }
+        function drop(ev, newPriority) {
+            ev.preventDefault(); ev.currentTarget.classList.remove('drop-zone-active');
+            const id = parseInt(ev.dataTransfer.getData("text/plain"));
+            const chatIndex = chats.findIndex(c => c.id === id);
+            if (chatIndex > -1 && chats[chatIndex].priority !== newPriority) { chats[chatIndex].priority = newPriority; saveData(); renderChats(); }
+        }
+
+        function saveData() { localStorage.setItem('geminiHubChats', JSON.stringify(chats)); }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            const editId = document.getElementById('editId').value;
+            const title = document.getElementById('inputTitle').value;
+            let path = document.getElementById('inputPath').value.trim();
+            const link = document.getElementById('inputLink').value.trim();
+            const priority = document.querySelector('input[name="priority"]:checked').value;
+            const desc = document.getElementById('inputDesc').value;
+            let tags = currentEditingTags;
+
+            // Auto-Tag Logic
+            const pendingTasks = currentEditingTasks.filter(t => !t.done).length;
+            // Filter out "Pending" (English) and legacy "Pendientes" (Spanish)
+            tags = tags.filter(t => t.toLowerCase() !== 'pending' && t.toLowerCase() !== 'pendientes');
+            if (pendingTasks > 0) tags.push('Pending');
+
+            if (path && !path.toLowerCase().endsWith('.html') && !path.toLowerCase().endsWith('.htm')) path += '.html';
+
+            const chatData = { title, path, link, priority, desc, tags, tasks: currentEditingTasks };
+
+            if (editId) {
+                const index = chats.findIndex(c => c.id == editId);
+                if (index !== -1) chats[index] = { ...chats[index], ...chatData };
+            } else {
+                chats.push({ id: Date.now(), ...chatData, date: new Date().toLocaleDateString() });
+            }
+            saveData();
+            closeModal();
+            renderChats();
+        }
+
+        function deleteChat(id) {
+            if(confirm('Delete this item?')) {
+                chats = chats.filter(c => c.id !== id);
+                saveData(); renderChats();
+            }
+        }
+
+        function toggleFavorite(e, id) {
+            e.stopPropagation(); 
+            const index = chats.findIndex(c => c.id === id);
+            if (index === -1) return;
+            let tags = chats[index].tags || [];
+            // Handle English and Legacy Spanish tags
+            if (tags.includes('favorites') || tags.includes('favoritos')) {
+                tags = tags.filter(t => t !== 'favorites' && t !== 'favoritos');
+            } else {
+                tags.push('Favorites'); // Use English
+            }
+            chats[index].tags = tags;
+            saveData(); renderChats();
+        }
+
+        function setTagFilter(tag) { activeTag = (activeTag === tag) ? null : tag; renderChats(); }
+
+        function renderTagFilters(allTags, pendingCount, favCount) {
+            const container = document.getElementById('tag-filters');
+            const statusContainer = document.getElementById('status-filters');
+            container.innerHTML = '';
+            statusContainer.innerHTML = '';
+
+            const allActive = activeTag === null;
+            const btnClass = allActive ? 'bg-gray-800 text-white border-gray-800 cursor-default' : 'bg-white text-rose-600 border-rose-300 hover:bg-rose-50 hover:border-rose-500 font-extrabold';
+            container.innerHTML += `<button onclick="setTagFilter(null)" class="px-3 py-1 rounded-full text-xs font-bold border transition-colors ${btnClass} whitespace-nowrap flex items-center gap-1 shadow-sm shrink-0"><i class="ph-bold ${allActive ? 'ph-circles-four' : 'ph-x'}"></i> ${allActive ? 'All' : 'Clear Filter'}</button><div class="w-px h-5 bg-gray-300 mx-1 shrink-0"></div>`;
+            
+            allTags.forEach(tag => {
+                const lowerTag = tag.toLowerCase();
+                if (lowerTag === 'favorites' || lowerTag === 'favoritos' || lowerTag === 'pending' || lowerTag === 'pendientes') return; 
+                const isActive = activeTag === tag;
+                const btnClassTag = isActive ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50';
+                container.innerHTML += `<button onclick="setTagFilter('${tag}')" class="px-3 py-1 rounded-full text-xs font-bold border transition-all ${btnClassTag} whitespace-nowrap flex items-center shrink-0">#${tag}</button>`;
+            });
+
+            // Pending Button (Red)
+            const isPendingActive = activeTag === 'Pending' || activeTag === 'Pendientes';
+            const pendingClass = isPendingActive 
+                ? 'bg-red-100 text-red-700 border-red-400 shadow-inner' 
+                : 'bg-white text-red-500 border-gray-200 hover:border-red-400 hover:text-red-600 hover:bg-red-50';
+            statusContainer.innerHTML += `<button onclick="setTagFilter('Pending')" class="px-3 py-1 rounded-full text-xs font-bold border transition-all ${pendingClass} whitespace-nowrap flex items-center gap-1" title="Show only pending"><i class="ph-bold ph-warning text-lg"></i> Pending (${pendingCount})</button>`;
+
+            // Favorites Button (Yellow)
+            const isFavActive = activeTag === 'Favorites' || activeTag === 'favoritos';
+            const favClass = isFavActive 
+                ? 'bg-yellow-100 text-yellow-700 border-yellow-400 shadow-inner' 
+                : 'bg-white text-yellow-500 border-gray-200 hover:border-yellow-400 hover:text-yellow-600 hover:bg-yellow-50';
+            statusContainer.innerHTML += `<button onclick="setTagFilter('Favorites')" class="px-3 py-1 rounded-full text-xs font-bold border transition-all ${favClass} whitespace-nowrap flex items-center gap-1" title="Show favorites"><i class="ph-fill ph-star text-lg"></i> Favorites (${favCount})</button>`;
+        }
+
+        function renderChats() {
+            const cols = { idea: document.getElementById('col-idea'), pinned: document.getElementById('col-pinned'), important: document.getElementById('col-important'), reference: document.getElementById('col-reference') };
+            const searchVal = document.getElementById('searchInput').value.toLowerCase();
+            Object.values(cols).forEach(el => el.innerHTML = '');
+            let counts = { idea: 0, pinned: 0, important: 0, reference: 0 };
+            let allTags = new Set();
+            
+            // Global counters
+            let pendingCount = 0;
+            let favCount = 0;
+
+            chats.forEach(chat => {
+                // Calculate stats
+                const matchesSearch = !searchVal || (chat.title.toLowerCase().includes(searchVal) || (chat.desc && chat.desc.toLowerCase().includes(searchVal)));
+                
+                if (matchesSearch) {
+                    if (chat.tags) {
+                        chat.tags.forEach(t => allTags.add(t));
+                        if (chat.tags.some(t => t.toLowerCase() === 'pending' || t.toLowerCase() === 'pendientes')) pendingCount++;
+                        if (chat.tags.some(t => t.toLowerCase() === 'favorites' || t.toLowerCase() === 'favoritos')) favCount++;
+                    }
+                }
+
+                if (!matchesSearch) return;
+                if (activeTag && (!chat.tags || !chat.tags.includes(activeTag))) return;
+                
+                if (!counts.hasOwnProperty(chat.priority)) chat.priority = 'reference';
+                counts[chat.priority]++;
+                cols[chat.priority].innerHTML += createCard(chat);
+            });
+
+            document.getElementById('count-idea').innerText = counts.idea;
+            document.getElementById('count-pin').innerText = counts.pinned;
+            document.getElementById('count-imp').innerText = counts.important;
+            document.getElementById('count-ref').innerText = counts.reference;
+            
+            renderTagFilters(Array.from(allTags).sort(), pendingCount, favCount);
+            updateHeaderStats(counts);
+        }
+
+        function createCard(chat) {
+            const hasPath = chat.path && chat.path.length > 0;
+            const hasLink = chat.link && chat.link.length > 0;
+            const mainHref = hasPath ? chat.path : '#';
+            const target = mainHref !== '#' ? 'target="_blank"' : '';
+            const pointerClass = mainHref !== '#' ? 'cursor-pointer hover:text-indigo-600' : 'cursor-default';
+            const cloudBtn = hasLink ? `<a href="${chat.link}" target="_blank" title="Open Cloud Link" class="ml-2 px-2 py-0.5 bg-blue-50 text-blue-600 rounded border border-blue-100 hover:bg-blue-100 hover:border-blue-300 transition-colors flex items-center gap-1 text-[10px]"><i class="ph-bold ph-cloud"></i> Cloud</a>` : '';
+            const localIcon = hasPath ? `<span class="flex items-center gap-1 truncate max-w-[120px] text-gray-500" title="Local File"><i class="ph-duotone ph-desktop text-gray-400"></i> ${chat.path}</span>` : `<span class="flex items-center gap-1 text-gray-400 italic"><i class="ph-duotone ph-warning-circle"></i> No local file</span>`;
+
+            let tagsHtml = '';
+            if (chat.tags && chat.tags.length > 0) {
+                tagsHtml = `<div class="flex flex-wrap gap-1 mt-2 mb-1">`;
+                chat.tags.forEach(tag => {
+                    const lower = tag.toLowerCase();
+                    if (lower === 'favorites' || lower === 'favoritos' || lower === 'pending' || lower === 'pendientes') return;
+                    let tagClass = 'bg-teal-50 text-teal-700 border-teal-100 hover:bg-teal-100 hover:border-teal-300';
+                    tagsHtml += `<button onclick="setTagFilter('${tag}')" class="px-1.5 py-0.5 text-[10px] rounded font-medium border transition-colors cursor-pointer ${tagClass}">#${tag}</button>`
+                });
+                tagsHtml += `</div>`;
+            }
+
+            let progressHtml = '';
+            if (chat.tasks && chat.tasks.length > 0) {
+                const total = chat.tasks.length;
+                const done = chat.tasks.filter(t => t.done).length;
+                const percent = Math.round((done / total) * 100);
+                const colorClass = percent === 100 ? 'bg-green-600' : 'bg-green-400';
+                const textClass = percent === 100 ? 'text-green-700 font-bold' : 'text-gray-500';
+                progressHtml = `<div class="mt-2 mb-1"><div class="flex justify-between text-[10px] mb-0.5 ${textClass}"><span class="flex items-center gap-1"><i class="ph-bold ph-check-square"></i> Tasks</span><span>${done}/${total} (${percent}%)</span></div><div class="w-full bg-gray-200 rounded-full h-1.5"><div class="${colorClass} h-1.5 rounded-full transition-all duration-500" style="width: ${percent}%"></div></div></div>`;
+            }
+
+            const descHtml = chat.desc ? `<p class="text-sm text-gray-500 line-clamp-2 mt-1">${linkify(chat.desc)}</p>` : '';
+            
+            const isFav = chat.tags && (chat.tags.includes('Favorites') || chat.tags.includes('favoritos'));
+            const starIcon = isFav 
+                ? '<i class="ph-fill ph-star text-yellow-400 text-xl drop-shadow-sm"></i>' 
+                : '<i class="ph-bold ph-star text-yellow-400/60 hover:text-yellow-400 text-xl transition-colors"></i>';
+            
+            const isPending = chat.tags && (chat.tags.includes('Pending') || chat.tags.includes('Pendientes'));
+            const pendingBadge = isPending 
+                ? `<div class="flex items-center gap-1 bg-red-50 text-red-600 border border-red-200 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide cursor-pointer hover:bg-red-100 transition-colors" onclick="setTagFilter('Pending')" title="View pending"><i class="ph-fill ph-warning text-sm"></i> PENDING</div>` 
+                : '';
+
+            return `
+                <div class="card-${chat.priority} card-base card-hover p-4 rounded-lg shadow-sm border border-gray-100 relative group flex flex-col gap-1" draggable="true" ondragstart="drag(event, ${chat.id})" ondragend="dragEnd(event)">
+                    <div class="flex justify-between items-start mb-1">
+                        <a href="${mainHref}" target="_blank" class="font-bold text-gray-800 text-lg leading-tight transition-colors hover:text-indigo-600 pr-2 block max-w-[75%]">${chat.title}</a>
+                        <div class="flex items-center gap-2 shrink-0">
+                            ${pendingBadge}
+                            <button onclick="toggleFavorite(event, ${chat.id})" title="${isFav ? 'Remove Favorite' : 'Add Favorite'}" class="focus:outline-none transform active:scale-90 transition-transform">
+                                ${starIcon}
+                            </button>
+                        </div>
+                    </div>
+                    <div class="absolute top-10 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 rounded-md p-1 shadow-sm border border-gray-100 z-30">
+                        <button onclick="openModal('edit', ${chat.id})" class="p-1 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded" title="Edit"><i class="ph-bold ph-pencil-simple"></i></button>
+                        <button onclick="deleteChat(${chat.id})" class="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded" title="Delete"><i class="ph-bold ph-trash"></i></button>
+                    </div>
+                    ${tagsHtml}
+                    ${descHtml}
+                    ${progressHtml}
+                    <div class="mt-auto pt-2 flex items-center justify-between text-[10px] font-mono uppercase tracking-wide border-t border-gray-50 mt-2">
+                        <span class="text-gray-400 flex items-center gap-1"><i class="ph-bold ph-calendar-blank"></i> ${chat.date}</span>
+                        <div class="flex items-center">${localIcon}${cloudBtn}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        const modal = document.getElementById('addModal');
+        const form = document.getElementById('chatForm');
+        function openModal(mode = 'create', id = null) {
+            modal.classList.remove('hidden');
+            form.reset();
+            document.getElementById('editId').value = '';
+            document.getElementById('tag-suggestions').classList.add('hidden');
+            document.getElementById('inputTags').value = '';
+            if (mode === 'edit' && id) {
+                const chat = chats.find(c => c.id === id);
+                if (chat) {
+                    document.getElementById('modalTitle').innerText = 'Edit Chat';
+                    document.getElementById('editId').value = chat.id;
+                    document.getElementById('inputTitle').value = chat.title;
+                    document.getElementById('inputPath').value = chat.path || '';
+                    document.getElementById('inputLink').value = chat.link || '';
+                    document.getElementById('inputDesc').value = chat.desc;
+                    currentEditingTags = JSON.parse(JSON.stringify(chat.tags || []));
+                    renderEditingTags();
+                    const radios = document.getElementsByName('priority');
+                    for(let r of radios) { if(r.value === chat.priority) r.checked = true; }
+                    currentEditingTasks = JSON.parse(JSON.stringify(chat.tasks || []));
+                    renderTaskEditor();
+                }
+            } else {
+                document.getElementById('modalTitle').innerText = 'Add Chat';
+                document.querySelector('input[value="idea"]').checked = true;
+                currentEditingTasks = [];
+                renderTaskEditor();
+                currentEditingTags = [];
+                renderEditingTags();
+            }
+        }
+        function closeModal() { modal.classList.add('hidden'); }
+        modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+        init();
+    </script>
+</body>
+</html>
