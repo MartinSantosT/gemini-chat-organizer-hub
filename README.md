@@ -6,7 +6,8 @@ Your AI Second Brain. A single-file, local-first Kanban board to organize your G
 <img src="screenshot.png" alt="Gemini Hub Screenshot" width="100%" style="border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
 </div>
 
-🚀 Why I built this?
+🚀 <b>Why I built this?</b>
+
 
 I use Google Gemini daily, but I kept losing track of my best conversations. I had brilliant prompts and complex project discussions buried under a pile of "Untitled Chats" in my history.
 
@@ -75,5 +76,6 @@ Phosphor Icons
 MIT License. Feel free to fork, modify, and make it your own!
 
 Built with ❤️ (and a lot of help from Gemini) by Martin Santos Temponi
+
 
 
