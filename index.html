@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemini Knowledge Hub v43.1 (Fix)</title>
+    <title>Gemini Hub v44.1 (Rescue Mode)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
@@ -49,7 +49,7 @@
             </div>
             <div>
                 <h1 class="text-xl font-bold tracking-wide flex items-center gap-2">
-                    Gemini Hub <span class="text-[10px] bg-emerald-600 px-1.5 py-0.5 rounded text-white tracking-widest font-mono">FIX v43.1</span>
+                    Gemini Hub <span class="text-[10px] bg-rose-500 px-1.5 py-0.5 rounded text-white tracking-widest font-mono">RESCUE v44.1</span>
                 </h1>
                 <p class="text-xs text-indigo-200">Knowledge Management</p>
             </div>
@@ -57,7 +57,7 @@
 
         <div class="hidden md:flex items-center gap-4 bg-indigo-800/50 px-4 py-1.5 rounded-lg border border-indigo-700/50 shadow-inner">
             <div class="flex items-center gap-4 text-xs font-medium text-indigo-100" id="header-stats">
-                <span class="animate-pulse">Loading...</span>
+                <span class="animate-pulse text-yellow-300">Initializing...</span>
             </div>
             <div class="w-px h-5 bg-indigo-600"></div>
             <button onclick="openManual()" class="flex items-center gap-2 text-xs font-bold text-indigo-200 hover:text-white transition-colors hover:bg-indigo-700/50 px-2 py-1 rounded">
@@ -66,7 +66,7 @@
         </div>
 
         <div class="flex gap-2">
-             <button id="btn-export" onclick="exportData()" class="bg-indigo-800 hover:bg-indigo-700 text-indigo-200 p-2 rounded-lg transition duration-300" title="Export Backup">
+             <button id="btn-export" onclick="exportData()" class="bg-indigo-800 hover:bg-indigo-700 text-indigo-200 p-2 rounded-lg transition duration-300" title="Export Backup (Save Changes)">
                 <i class="ph-bold ph-download-simple text-xl"></i>
              </button>
              <button onclick="document.getElementById('fileInput').click()" class="bg-indigo-800 hover:bg-indigo-700 text-indigo-200 p-2 rounded-lg transition" title="Import Backup">
@@ -210,23 +210,45 @@
     </div>
 
     <script>
-        // FIX: Ensure chats is always an array
+        // --- RESCUE MODE INITIALIZATION ---
+        // 1. Define global variables first
         let chats = [];
-        try {
-            const stored = localStorage.getItem('geminiHubChats');
-            if (stored) chats = JSON.parse(stored);
-        } catch(e) { console.error("Error loading chats", e); }
-        if (!Array.isArray(chats)) chats = [];
-
         let activeTag = null;
         let currentEditingTasks = [];
         let currentEditingTags = []; 
 
         function init() { 
-            updateAutoTags(); 
-            renderChats(); 
+            try {
+                // 2. Safe Load
+                const stored = localStorage.getItem('geminiHubChats');
+                if (stored) {
+                    try {
+                        const parsed = JSON.parse(stored);
+                        if (Array.isArray(parsed)) {
+                            // 3. SANITIZATION: Remove nulls/undefined immediately
+                            chats = parsed.filter(item => item && typeof item === 'object');
+                        }
+                    } catch (parseErr) {
+                        console.error("JSON Error:", parseErr);
+                        chats = []; // Reset if JSON is totally broken
+                    }
+                }
+                
+                // 4. Run Logic with Try/Catch blocks
+                updateAutoTags(); 
+                renderChats();
+
+            } catch (criticalErr) {
+                // 5. VISUAL ERROR REPORTING (No more stuck Loading...)
+                console.error("Critical Init Error:", criticalErr);
+                const statsEl = document.getElementById('header-stats');
+                if (statsEl) {
+                    statsEl.innerHTML = `<span class="text-red-400 font-bold bg-red-900/50 px-2 py-1 rounded">ERROR: ${criticalErr.message}</span>`;
+                }
+            }
         }
 
+        // --- UPDATED EXPORT FUNCTION WITH TIME ---
         function saveData() { 
             localStorage.setItem('geminiHubChats', JSON.stringify(chats)); 
             const btn = document.getElementById('btn-export');
@@ -237,7 +259,20 @@
             const dataStr = JSON.stringify(chats, null, 2);
             const blob = new Blob([dataStr], { type: "application/json" });
             const url = URL.createObjectURL(blob);
-            const a = document.createElement('a'); a.href = url; a.download = `gemini-hub-backup-${new Date().toISOString().slice(0,10)}.json`;
+            
+            // Generate Timestamp YYYY-MM-DD_HH-MM
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            const h = String(now.getHours()).padStart(2, '0');
+            const min = String(now.getMinutes()).padStart(2, '0');
+            const timestamp = `${y}-${m}-${d}_${h}-${min}`;
+
+            const a = document.createElement('a'); 
+            a.href = url; 
+            a.download = `gemini-hub-backup-${timestamp}.json`;
+            
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
             const btn = document.getElementById('btn-export');
             if (btn) { btn.classList.remove('needs-save'); btn.title = "Export Backup"; }
@@ -251,7 +286,8 @@
                     const json = JSON.parse(e.target.result);
                     if (Array.isArray(json)) {
                         if(confirm('Overwrite current data?')) { 
-                            chats = json; 
+                            // Sanitize imported data too
+                            chats = json.filter(item => item && typeof item === 'object');
                             localStorage.setItem('geminiHubChats', JSON.stringify(chats)); 
                             renderChats(); 
                             const btn = document.getElementById('btn-export');
@@ -271,14 +307,15 @@
 
         function updateAutoTags() {
             let changed = false;
+            // Guard: Ensure chats is array
+            if (!Array.isArray(chats)) chats = [];
+            
             chats.forEach(chat => {
-                // FIX: Guard against null tags
+                if (!chat) return; // Skip nulls
                 if (!chat.tags || !Array.isArray(chat.tags)) chat.tags = [];
-                // FIX: Guard against null tasks
                 if (!chat.tasks || !Array.isArray(chat.tasks)) chat.tasks = [];
                 
-                const hasPending = chat.tasks.some(t => !t.done);
-                // FIX: Check if tag is string before toLowerCase
+                const hasPending = chat.tasks.some(t => t && !t.done);
                 const pendingIndex = chat.tags.findIndex(t => (typeof t === 'string' && t.toLowerCase() === 'pending'));
                 
                 if (hasPending && pendingIndex === -1) { chat.tags.push('Pending'); changed = true; }
@@ -290,6 +327,7 @@
         function updateHeaderStats(counts) {
             const total = chats.length;
             const statsContainer = document.getElementById('header-stats');
+            if (!statsContainer) return;
             statsContainer.innerHTML = `
                 <span class="font-bold text-indigo-200">Total: ${total}</span>
                 <span class="mx-3 text-indigo-500/50 text-lg">|</span>
@@ -441,47 +479,52 @@
         }
 
         function renderChats() {
-            const cols = { idea: document.getElementById('col-idea'), pinned: document.getElementById('col-pinned'), important: document.getElementById('col-important'), reference: document.getElementById('col-reference') };
-            const searchVal = document.getElementById('searchInput').value.toLowerCase();
-            Object.values(cols).forEach(el => el.innerHTML = '');
-            let counts = { idea: 0, pinned: 0, important: 0, reference: 0 };
-            let allTags = new Set();
-            let pendingCount = 0;
-            let favCount = 0;
+            try {
+                const cols = { idea: document.getElementById('col-idea'), pinned: document.getElementById('col-pinned'), important: document.getElementById('col-important'), reference: document.getElementById('col-reference') };
+                const searchVal = document.getElementById('searchInput').value.toLowerCase();
+                Object.values(cols).forEach(el => el.innerHTML = '');
+                let counts = { idea: 0, pinned: 0, important: 0, reference: 0 };
+                let allTags = new Set();
+                let pendingCount = 0;
+                let favCount = 0;
 
-            chats.forEach(chat => {
-                // FIX: Guard against null title/desc
-                const cTitle = chat.title || '';
-                const cDesc = chat.desc || '';
-                const matchesSearch = !searchVal || (cTitle.toLowerCase().includes(searchVal) || cDesc.toLowerCase().includes(searchVal));
-                
-                if (matchesSearch) {
-                    if (chat.tags) {
-                        chat.tags.forEach(t => allTags.add(t));
-                        if (chat.tags.some(t => (typeof t === 'string' && t.toLowerCase() === 'pending'))) pendingCount++;
-                        if (chat.tags.includes('favorites')) favCount++;
+                chats.forEach(chat => {
+                    // Safe access
+                    if (!chat) return;
+                    const cTitle = chat.title || '';
+                    const cDesc = chat.desc || '';
+                    const matchesSearch = !searchVal || (cTitle.toLowerCase().includes(searchVal) || cDesc.toLowerCase().includes(searchVal));
+                    
+                    if (matchesSearch) {
+                        if (chat.tags) {
+                            chat.tags.forEach(t => allTags.add(t));
+                            if (chat.tags.some(t => (typeof t === 'string' && t.toLowerCase() === 'pending'))) pendingCount++;
+                            if (chat.tags.includes('favorites')) favCount++;
+                        }
                     }
-                }
 
-                if (!matchesSearch) return;
-                if (activeTag && (!chat.tags || !chat.tags.includes(activeTag))) return;
+                    if (!matchesSearch) return;
+                    if (activeTag && (!chat.tags || !chat.tags.includes(activeTag))) return;
+                    
+                    if (!counts.hasOwnProperty(chat.priority)) chat.priority = 'reference';
+                    counts[chat.priority]++;
+                    cols[chat.priority].innerHTML += createCard(chat);
+                });
+
+                document.getElementById('count-idea').innerText = counts.idea;
+                document.getElementById('count-pin').innerText = counts.pinned;
+                document.getElementById('count-imp').innerText = counts.important;
+                document.getElementById('count-ref').innerText = counts.reference;
                 
-                if (!counts.hasOwnProperty(chat.priority)) chat.priority = 'reference';
-                counts[chat.priority]++;
-                cols[chat.priority].innerHTML += createCard(chat);
-            });
-
-            document.getElementById('count-idea').innerText = counts.idea;
-            document.getElementById('count-pin').innerText = counts.pinned;
-            document.getElementById('count-imp').innerText = counts.important;
-            document.getElementById('count-ref').innerText = counts.reference;
-            
-            renderTagFilters(Array.from(allTags).sort(), pendingCount, favCount);
-            updateHeaderStats(counts);
+                renderTagFilters(Array.from(allTags).sort(), pendingCount, favCount);
+                updateHeaderStats(counts);
+            } catch (renderErr) {
+                 console.error("Render Error:", renderErr);
+                 // Fallback display if render fails mid-way
+            }
         }
 
         function createCard(chat) {
-            // FIX: Robust check for strings
             const linkStr = chat.link || '';
             const pathStr = chat.path || '';
             const hasLink = linkStr.length > 0;
@@ -502,7 +545,6 @@
             if (chat.tags && chat.tags.length > 0) {
                 tagsHtml = `<div class="flex flex-wrap gap-1 mt-2 mb-1">`;
                 chat.tags.forEach(tag => {
-                    // FIX: Ensure tag is string
                     if (typeof tag !== 'string') return;
                     if (tag === 'favorites' || tag.toLowerCase() === 'pending') return;
                     let tagClass = 'bg-teal-50 text-teal-700 border-teal-100 hover:bg-teal-100 hover:border-teal-300';
@@ -526,7 +568,6 @@
             const isFav = chat.tags && chat.tags.includes('favorites');
             const starIcon = isFav ? '<i class="ph-fill ph-star text-yellow-400 text-xl drop-shadow-sm"></i>' : '<i class="ph-bold ph-star text-yellow-400/60 hover:text-yellow-400 text-xl transition-colors"></i>';
             
-            // FIX: Check for string in pending check
             const isPending = chat.tags && chat.tags.some(t => (typeof t === 'string' && t.toLowerCase() === 'pending'));
             const pendingBadge = isPending ? `<div class="flex items-center gap-1 bg-red-50 text-red-600 border border-red-200 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide cursor-pointer hover:bg-red-100 transition-colors" onclick="setTagFilter('Pending')" title="View pending"><i class="ph-fill ph-warning text-sm"></i> PENDING</div>` : '';
 
