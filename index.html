@@ -194,17 +194,153 @@
     <div id="manualModal" class="fixed inset-0 bg-black bg-opacity-60 hidden flex items-center justify-center backdrop-blur-sm z-50">
         <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col transform transition-all scale-100 border border-gray-200">
             <div class="flex justify-between items-center p-5 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-white rounded-t-xl">
-                <h2 class="text-2xl font-bold text-indigo-900 flex items-center gap-2"><i class="ph-fill ph-book-open text-indigo-600"></i> Gemini Hub User Manual</h2>
-                <button onclick="closeManual()" class="text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 p-2 rounded-full transition"><i class="ph-bold ph-x text-2xl"></i></button>
+                <h2 class="text-2xl font-bold text-indigo-900 flex items-center gap-2">
+                    <i class="ph-fill ph-book-open text-indigo-600"></i> Gemini Hub User Manual
+                </h2>
+                <button onclick="closeManual()" class="text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 p-2 rounded-full transition">
+                    <i class="ph-bold ph-x text-2xl"></i>
+                </button>
             </div>
-            <div class="p-8 overflow-y-auto custom-scroll manual-content bg-white">
-                <div class="mb-8 bg-indigo-50 p-4 rounded-lg border border-indigo-100 text-indigo-800">
-                    <h3 class="font-bold text-lg mb-2"><i class="ph-bold ph-warning-circle"></i> Data & Privacy</h3>
-                    <p class="text-sm">This app is <strong>100% Local</strong>. Data is stored in your browser (LocalStorage). Use <strong>Export/Import</strong> to move data between devices.</p>
-                </div>
-                <h2>1. Organization</h2>
-                <p>Drag and drop to organize:</p>
-                <ul><li><strong>IDEAS</strong>: Backlog.</li><li><strong>PINS</strong>: High Priority.</li><li><strong>PROJECTS</strong>: Active work.</li><li><strong>ARCHIVE</strong>: Reference / Done.</li></ul>
+
+            <div class="p-8 overflow-y-auto custom-scroll manual-content bg-white text-gray-700 space-y-8">
+                
+                <section>
+                    <h3 class="text-xl font-bold text-indigo-700 mb-3 flex items-center gap-2">
+                        <i class="ph-bold ph-cpu"></i> 1. Architecture & Technology
+                    </h3>
+                    <p class="text-sm mb-2">This code is a <strong>Personal Knowledge Management (PKM)</strong> tool, Kanban style, designed to run entirely in the browser (client-side). Basically, you have created a "Hub" or dashboard to organize your interactions with Gemini, coding projects, local files, and web links.</p>
+                    
+                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 text-sm">
+                        <ul class="list-disc pl-5 space-y-2">
+                            <li><strong>Single File Application:</strong> Everything (HTML, CSS, JS) lives in one file. It is ultra-portable.</li>
+                            <li><strong>Local Storage:</strong> It uses no external database. All data is stored in your browser's memory under the key <code>geminiHubChats</code>. This makes it fast and private.</li>
+                            <li><strong>Kanban Structure:</strong>
+                                <ul class="list-circle pl-5 mt-1 text-xs text-gray-600">
+                                    <li><span class="text-purple-600 font-bold">IDEAS:</span> Backlog. Things you thought of but haven't started.</li>
+                                    <li><span class="text-amber-600 font-bold">PINS:</span> High Priority. What you need to keep in sight.</li>
+                                    <li><span class="text-blue-600 font-bold">PROJECTS:</span> Active work (Scripts, budgets, etc.).</li>
+                                    <li><span class="text-gray-600 font-bold">ARCHIVE:</span> Historical reference or closed topics.</li>
+                                </ul>
+                            </li>
+                            <li><strong>The "Card":</strong> A JSON object containing Title, Hybrid Links (Cloud/Local), Task Checklist, and Metadata (Tags, Favorites).</li>
+                            <li><strong>Smart Automation:</strong>
+                                <ul class="list-circle pl-5 mt-1 text-xs text-gray-600">
+                                    <li><strong>Auto-Tagging:</strong> If tasks are incomplete, it adds <code>#Pending</code>. If all done, the tag is removed.</li>
+                                    <li><strong>Drag & Drop:</strong> Moving cards updates their priority automatically.</li>
+                                    <li><strong>Backup:</strong> The Export/Import buttons allow you to save your database as a <code>.json</code> file.</li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+                </section>
+
+                <hr class="border-gray-100">
+
+                <section>
+                    <h3 class="text-xl font-bold text-indigo-700 mb-3 flex items-center gap-2">
+                        <i class="ph-bold ph-target"></i> 2. What is this for?
+                    </h3>
+                    <p>It is a hybrid project organizer (Web + Local Files) that allows you to have <strong>visual control</strong> over what you are programming, researching, or managing, without depending on external servers.</p>
+                    <p class="mt-2"><strong>The Problem it Solves:</strong> AI chats (like Gemini or ChatGPT) often lose context after long conversations. By saving specific chats as local files and organizing them here, you preserve the "perfect state" of a project forever.</p>
+                    <p class="mt-2">It is ideal for users managing multiple contexts, such as Python scripts, corporate budgets, hardware research, or academic papers.</p>
+                    <p class="mt-2"><strong>And most importantly,</strong> it helps you organize all the chats you have with Gemini so you don't lose track of each one and their priority for you.</p>
+                </section>
+
+                <hr class="border-gray-100">
+
+                <section>
+                    <h3 class="text-xl font-bold text-indigo-700 mb-3 flex items-center gap-2">
+                        <i class="ph-bold ph-steps"></i> 3. Getting Started (Step-by-Step)
+                    </h3>
+                    
+                    <div class="space-y-4">
+                        <div class="flex gap-3">
+                            <div class="font-bold text-indigo-500 text-xl">01</div>
+                            <div>
+                                <h4 class="font-bold text-gray-900">Create your Workspace</h4>
+                                <p class="text-sm text-gray-600">Create a new folder on your computer named <code>Gemini_Projects</code> (or whatever you prefer). Move this <code>Gemini_Hub.html</code> file inside that folder.</p>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <div class="font-bold text-indigo-500 text-xl">02</div>
+                            <div>
+                                <h4 class="font-bold text-gray-900">Save your Chats</h4>
+                                <p class="text-sm text-gray-600">When you have a valuable conversation with AI, save the webpage (Ctrl+S) into that same folder.
+                                <br><span class="text-xs bg-yellow-100 px-1 rounded">Tip:</span> Use simple names like <code>budget_2026.html</code> or <code>python_script.html</code>.</p>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <div class="font-bold text-indigo-500 text-xl">03</div>
+                            <div>
+                                <h4 class="font-bold text-gray-900">Register in the Hub</h4>
+                                <p class="text-sm text-gray-600">Open the Hub, click <strong>"New Chat"</strong>.
+                                <br>• In <strong>Local File</strong>, type the name of the file you just saved (e.g., <code>budget_2026.html</code>).
+                                <br>• In <strong>Cloud Link</strong>, paste the original URL of the chat (optional but recommended).
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <div class="font-bold text-indigo-500 text-xl">04</div>
+                            <div>
+                                <h4 class="font-bold text-gray-900">Using Cloud Services (OneDrive/Dropbox)</h4>
+                                <p class="text-sm text-gray-600">To access your files from multiple computers, simply place your <code>Gemini_Projects</code> folder inside your <strong>OneDrive</strong> or <strong>Google Drive</strong> sync folder.</p>
+                                <div class="mt-2 bg-red-50 border-l-4 border-red-400 p-2 text-xs text-red-700">
+                                    <strong>Important:</strong> While OneDrive syncs your HTML files, it does NOT sync the browser's "Local Storage" (where the card organization lives). To move your board organization to another PC, use the <strong>Export Backup</strong> button, save the .json file in your OneDrive, and <strong>Import</strong> it on the other computer.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <hr class="border-gray-100">
+
+                <section>
+                    <h3 class="text-xl font-bold text-indigo-700 mb-3 flex items-center gap-2">
+                        <i class="ph-bold ph-star"></i> 4. Key Features Guide
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div class="flex gap-2">
+                            <div class="text-indigo-500"><i class="ph-fill ph-tag text-xl"></i></div>
+                            <div><strong>Smart Tags:</strong> Categorize cards. Click any tag to filter the board instantly.</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <div class="text-yellow-500"><i class="ph-fill ph-star text-xl"></i></div>
+                            <div><strong>Favorites:</strong> Mark top cards. Use the Star filter to see only your favorites.</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <div class="text-blue-500"><i class="ph-bold ph-cloud text-xl"></i></div>
+                            <div><strong>Hybrid Links:</strong> Direct access to Cloud URLs or Local file paths from the footer.</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <div class="text-red-500"><i class="ph-bold ph-warning text-xl"></i></div>
+                            <div><strong>Auto-Pending:</strong> Cards with unchecked tasks automatically get a "Pending" badge.</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <div class="text-gray-500"><i class="ph-bold ph-link text-xl"></i></div>
+                            <div><strong>Rich Notes:</strong> The notes field automatically converts URLs (https://...) into clickable links.</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <div class="text-green-600"><i class="ph-bold ph-check-square text-xl"></i></div>
+                            <div><strong>Task Progress:</strong> Visual progress bar updates automatically as you check off items.</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <div class="text-indigo-600"><i class="ph-bold ph-hand-grabbing text-xl"></i></div>
+                            <div><strong>Drag & Drop:</strong> Move cards between columns to change priority/status instantly.</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <div class="text-gray-700"><i class="ph-bold ph-download-simple text-xl"></i></div>
+                            <div><strong>Backup System:</strong> Export your data to JSON to save it or move to another PC.</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <div class="text-gray-500"><i class="ph-bold ph-pencil-simple text-xl"></i></div>
+                            <div><strong>Edit & Delete:</strong> Use the floating buttons (top-right of card) to manage content.</div>
+                        </div>
+                    </div>
+                </section>
+
             </div>
         </div>
     </div>
