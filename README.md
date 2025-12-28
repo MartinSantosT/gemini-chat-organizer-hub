@@ -1,4 +1,4 @@
-# 🧠 Gemini Knowledge Hub (v46.1 Stable)
+# 🧠 AI Knowledge Hub (v46.1 Stable)
 
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Version](https://img.shields.io/badge/version-46.1-blue)
@@ -84,3 +84,4 @@ Since the app is just one file, you can save the HTML and your exported `.json` 
 Feel free to fork, modify, and make it your own!
 
 Built with ❤️ (and a lot of help from Gemini) by **Martin Santos Temponi**.
+
