@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en" class="transition-colors duration-300">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Knowledge Hub v46.1</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Smooth Transitions */
+        .card-base { transition: all 0.2s ease; cursor: grab; position: relative; }
+        .card-base:active { cursor: grabbing; }
+        
+        /* Column Border Colors */
+        .card-idea { border-left: 5px solid #9333ea; }
+        .card-pinned { border-left: 5px solid #f59e0b; }
+        .card-important { border-left: 5px solid #3b82f6; }
+        .card-reference { border-left: 5px solid #9ca3af; }
+        
+        /* Hover Effects */
+        .card-hover:hover { transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); z-index: 50; }
+
+        .dragging { opacity: 0.5; transform: scale(0.95); border: 2px dashed #6366f1; }
+        .drop-zone-active { background-color: #e0e7ff !important; border-color: #818cf8 !important; }
+        
+        /* Dark Mode Scrollbars */
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+        .dark .custom-scroll::-webkit-scrollbar-thumb { background-color: #4b5563; }
+
+        .tag-active { background-color: #4f46e5 !important; color: white !important; border-color: #4f46e5 !important; }
+        
+        #tag-suggestions { max-height: 150px; overflow-y: auto; }
+        .suggestion-item:hover { background-color: #f3f4f6; color: #4f46e5; }
+        .dark .suggestion-item:hover { background-color: #374151; color: #818cf8; }
+
+        .task-checkbox:checked + span { text-decoration: line-through; color: #9ca3af; }
+        
+        /* Manual Styles */
+        .manual-content h2 { color: #4f46e5; font-weight: bold; font-size: 1.25rem; margin-top: 1.5rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .dark .manual-content h2 { color: #818cf8; }
+        .manual-content p { margin-bottom: 0.75rem; color: #374151; }
+        .dark .manual-content p { color: #d1d5db; }
+        .manual-content ul { padding-left: 1.5rem; margin-bottom: 1rem; list-style-type: disc; }
+
+        /* Pulse Alert */
+        @keyframes pulse-alert {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .needs-save {
+            background-color: #ef4444 !important;
+            color: white !important;
+            animation: pulse-alert 2s infinite;
+            border: 1px solid #b91c1c !important;
+        }
+        
+        /* Search Suggestions Box */
+        .search-suggestions-box {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .dark .search-suggestions-box {
+            border-color: #4b5563;
+            background-color: #1f2937;
+            color: #e5e7eb;
+        }
+    </style>
+</head>
+<body class="bg-f3f4f6 text-gray-800 h-screen flex flex-col overflow-hidden select-none bg-gray-100 dark:bg-gray-900 dark:text-gray-100 transition-colors duration-300" onclick="closeSearchSuggestions()">
+
+    <div class="bg-indigo-900 dark:bg-gray-950 text-white p-4 flex justify-between items-center shadow-lg shrink-0 z-20 transition-colors duration-300">
+        <div class="flex items-center gap-3 min-w-max">
+            <div class="bg-white/10 p-2 rounded-lg">
+                <i class="ph-fill ph-kanban text-2xl text-indigo-300"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-wide flex items-center gap-2">
+                    AI Knowledge Hub <span class="text-[10px] bg-indigo-500 px-1.5 py-0.5 rounded text-white tracking-widest font-mono">FINAL v46.1</span>
+                </h1>
+                <p class="text-xs text-indigo-200">Knowledge Management</p>
+            </div>
+        </div>
+
+        <div class="hidden md:flex items-center gap-4 bg-indigo-800/50 dark:bg-gray-800/50 px-4 py-1.5 rounded-lg border border-indigo-700/50 dark:border-gray-700 shadow-inner">
+            <div class="flex items-center gap-4 text-xs font-medium text-indigo-100" id="header-stats">
+                <span class="animate-pulse text-yellow-300">Initializing...</span>
+            </div>
+            <div class="w-px h-5 bg-indigo-600 dark:bg-gray-600"></div>
+            <button onclick="openManual()" class="flex items-center gap-2 text-xs font-bold text-indigo-200 hover:text-white transition-colors hover:bg-indigo-700/50 px-2 py-1 rounded">
+                <i class="ph-bold ph-book-open text-lg"></i> MANUAL
+            </button>
+        </div>
+
+        <div class="flex gap-2 items-center">
+             <button onclick="toggleTheme()" class="bg-indigo-800 dark:bg-gray-800 hover:bg-indigo-700 dark:hover:bg-gray-700 text-indigo-200 p-2 rounded-lg transition mr-2 border border-transparent dark:border-gray-700" title="Toggle Dark Mode">
+                <i id="themeIcon" class="ph-bold ph-moon text-xl"></i>
+             </button>
+
+             <button id="btn-export" onclick="exportData()" class="bg-indigo-800 dark:bg-gray-800 hover:bg-indigo-700 dark:hover:bg-gray-700 text-indigo-200 p-2 rounded-lg transition duration-300 border border-transparent dark:border-gray-700" title="Export Backup (Save Changes)">
+                <i class="ph-bold ph-download-simple text-xl"></i>
+             </button>
+             
+             <button onclick="document.getElementById('fileInput').click()" class="bg-indigo-800 dark:bg-gray-800 hover:bg-indigo-700 dark:hover:bg-gray-700 text-indigo-200 p-2 rounded-lg transition border border-transparent dark:border-gray-700" title="Import Backup">
+                <i class="ph-bold ph-upload-simple text-xl"></i>
+             </button>
+             <input type="file" id="fileInput" class="hidden" accept=".json" onchange="importData(this)">
+
+             <button onclick="openModal()" class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition shadow-md border border-indigo-400 min-w-max">
+                <i class="ph-bold ph-plus"></i> New Chat
+            </button>
+        </div>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-2 flex items-center justify-between gap-2 overflow-x-auto shrink-0 shadow-sm z-10 transition-colors duration-300">
+        <div class="flex items-center gap-2 overflow-x-auto no-scrollbar">
+            <span class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1 mr-2 shrink-0">
+                <i class="ph-bold ph-funnel"></i> Topics:
+            </span>
+            <div id="tag-filters" class="flex gap-2 items-center"></div>
+        </div>
+        <div class="flex gap-2 items-center pl-4 border-l border-gray-200 dark:border-gray-700 shrink-0" id="status-filters"></div>
+    </div>
+
+    <div class="flex-1 overflow-x-auto overflow-y-hidden p-6 bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+        <div class="flex gap-4 h-full min-w-[1300px]">
+            <div class="w-1/4 flex flex-col h-full">
+                <div class="flex items-center gap-2 mb-3 text-purple-600 dark:text-purple-300 font-bold bg-purple-50 dark:bg-purple-900/20 p-3 rounded-t-xl border-b border-purple-100 dark:border-purple-900/30 shadow-sm">
+                    <i class="ph-fill ph-lightbulb text-xl"></i> <h2>IDEAS</h2> <span id="count-idea" class="ml-auto bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-300 text-xs px-2 py-0.5 rounded-full shadow-sm font-mono">0</span>
+                </div>
+                <div id="col-idea" class="flex-1 bg-gray-100 dark:bg-gray-800/50 rounded-b-xl border border-gray-200 dark:border-gray-700 p-3 pt-6 overflow-y-auto custom-scroll space-y-5 transition-colors" ondrop="drop(event, 'idea')" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)"></div>
+            </div>
+            <div class="w-1/4 flex flex-col h-full">
+                <div class="flex items-center gap-2 mb-3 text-amber-600 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-900/20 p-3 rounded-t-xl border-b border-amber-100 dark:border-amber-900/30 shadow-sm">
+                    <i class="ph-fill ph-push-pin text-xl"></i> <h2>PINS</h2> <span id="count-pin" class="ml-auto bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-400 text-xs px-2 py-0.5 rounded-full shadow-sm font-mono">0</span>
+                </div>
+                <div id="col-pinned" class="flex-1 bg-gray-100 dark:bg-gray-800/50 rounded-b-xl border border-gray-200 dark:border-gray-700 p-3 pt-6 overflow-y-auto custom-scroll space-y-5 transition-colors" ondrop="drop(event, 'pinned')" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)"></div>
+            </div>
+            <div class="w-1/4 flex flex-col h-full">
+                <div class="flex items-center gap-2 mb-3 text-blue-600 dark:text-blue-400 font-bold bg-blue-50 dark:bg-blue-900/20 p-3 rounded-t-xl border-b border-blue-100 dark:border-blue-900/30 shadow-sm">
+                    <i class="ph-fill ph-star text-xl"></i> <h2>PROJECTS</h2> <span id="count-imp" class="ml-auto bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 text-xs px-2 py-0.5 rounded-full shadow-sm font-mono">0</span>
+                </div>
+                <div id="col-important" class="flex-1 bg-gray-100 dark:bg-gray-800/50 rounded-b-xl border border-gray-200 dark:border-gray-700 p-3 pt-6 overflow-y-auto custom-scroll space-y-5 transition-colors" ondrop="drop(event, 'important')" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)"></div>
+            </div>
+            <div class="w-1/4 flex flex-col h-full">
+                <div class="flex items-center gap-2 mb-3 text-gray-600 dark:text-gray-300 font-bold bg-gray-100 dark:bg-gray-800 p-3 rounded-t-xl border-b border-gray-200 dark:border-gray-700 shadow-sm">
+                    <i class="ph-fill ph-archive text-xl"></i> <h2>ARCHIVE</h2> <span id="count-ref" class="ml-auto bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-xs px-2 py-0.5 rounded-full shadow-sm font-mono">0</span>
+                </div>
+                
+                <div class="bg-gray-100 dark:bg-gray-800 px-3 pb-2 border-x border-gray-200 dark:border-gray-700">
+                    <div class="relative group">
+                         <i class="ph-bold ph-magnifying-glass absolute left-3 top-2.5 text-gray-400 group-focus-within:text-indigo-500"></i>
+                         <input type="text" id="searchInput" oninput="handleSearchInput()" placeholder="Search..." autocomplete="off" class="w-full pl-9 pr-8 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-sm placeholder-gray-400">
+                         
+                         <button id="searchClearBtn" onclick="clearSearch()" class="absolute right-2 top-2 text-gray-400 hover:text-red-500 hidden p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                            <i class="ph-bold ph-x"></i>
+                         </button>
+
+                         <div id="search-tag-suggestions" class="hidden absolute top-full left-0 w-full bg-white border border-gray-200 rounded-lg shadow-lg z-50 mt-1 search-suggestions-box"></div>
+                    </div>
+                </div>
+
+                <div id="col-reference" class="flex-1 bg-gray-100 dark:bg-gray-800/50 rounded-b-xl border border-gray-200 dark:border-gray-700 p-3 pt-6 overflow-y-auto custom-scroll space-y-5 transition-colors" ondrop="drop(event, 'reference')" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="addModal" class="fixed inset-0 bg-indigo-900/40 dark:bg-black/60 hidden flex items-center justify-center backdrop-blur-sm z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg p-6 transform transition-all scale-100 border border-gray-200 dark:border-gray-700 max-h-[95vh] overflow-y-auto" onclick="closeSuggestions()">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2" id="modalTitle"><i class="ph-duotone ph-file-html text-indigo-600 dark:text-indigo-400"></i> Register</h2>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><i class="ph-bold ph-x text-xl"></i></button>
+            </div>
+            <form id="chatForm" onsubmit="handleFormSubmit(event)">
+                <input type="hidden" id="editId" value="">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Title</label>
+                        <input type="text" id="inputTitle" required class="block w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm p-2.5 focus:ring-indigo-500 focus:border-indigo-500 font-bold text-gray-800 dark:bg-gray-700 dark:text-white" placeholder="Ex: Futuristic Photos Prompt">
+                    </div>
+                    <div class="relative">
+                        <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Tags</label>
+                        <div class="flex flex-wrap gap-2 p-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-700 focus-within:ring-2 focus-within:ring-indigo-500"><div id="activeTagsContainer" class="flex flex-wrap gap-2"></div><input type="text" id="inputTags" autocomplete="off" class="flex-grow min-w-[100px] outline-none text-sm text-gray-700 dark:text-white dark:bg-transparent placeholder-gray-400" placeholder="Type & Enter..." oninput="showSuggestions()" onfocus="showSuggestions()" onkeydown="handleTagInput(event)"></div>
+                        <div id="tag-suggestions" class="hidden absolute left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md shadow-lg z-50"></div>
+                    </div>
+                    <div class="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
+                        <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 flex justify-between">
+                            <span>Task List</span>
+                            <span class="text-indigo-500 dark:text-indigo-400 text-[10px] bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded border border-indigo-100 dark:border-indigo-800">Enter to add</span>
+                        </label>
+                        <div class="flex gap-2 mb-2">
+                            <input type="text" id="newTaskInput" class="block w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white" placeholder="New task..." onkeypress="handleTaskEnter(event)">
+                            <button type="button" onclick="addModalTask()" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-3 transition-colors shadow-sm"><i class="ph-bold ph-plus"></i></button>
+                        </div>
+                        <ul id="taskList" class="space-y-1.5 max-h-48 overflow-y-auto pr-1"></ul>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Local File (HTML)</label>
+                            <div class="relative">
+                                <input type="text" id="inputPath" class="block w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm p-2.5 pr-8 font-mono text-xs bg-white dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" placeholder="red_martin.html">
+                                <i class="ph-bold ph-desktop absolute right-3 top-3 text-gray-400"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Cloud Link</label>
+                            <div class="relative">
+                                <input type="url" id="inputLink" class="block w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm p-2.5 pr-8 font-mono text-xs bg-white dark:bg-gray-700 dark:text-blue-400 focus:ring-indigo-500 focus:border-indigo-500 text-blue-600" placeholder="https://...">
+                                <i class="ph-bold ph-cloud absolute right-3 top-3 text-gray-400"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Priority</label>
+                        <div class="grid grid-cols-4 gap-2 mt-1">
+                            <label class="cursor-pointer relative"><input type="radio" name="priority" value="idea" class="peer sr-only" required><div class="text-center py-2 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900/30 peer-checked:bg-purple-100 dark:peer-checked:bg-purple-900/50 peer-checked:border-purple-500 peer-checked:text-purple-800 dark:peer-checked:text-purple-300 transition-all text-xs font-bold flex flex-col items-center"><i class="ph-fill ph-lightbulb text-lg mb-1"></i> Idea</div></label>
+                            <label class="cursor-pointer relative"><input type="radio" name="priority" value="pinned" class="peer sr-only"><div class="text-center py-2 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-amber-50 dark:hover:bg-amber-900/30 peer-checked:bg-amber-100 dark:peer-checked:bg-amber-900/50 peer-checked:border-amber-500 peer-checked:text-amber-800 dark:peer-checked:text-amber-300 transition-all text-xs font-bold flex flex-col items-center"><i class="ph-fill ph-push-pin text-lg mb-1"></i> Pin</div></label>
+                            <label class="cursor-pointer relative"><input type="radio" name="priority" value="important" class="peer sr-only"><div class="text-center py-2 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 peer-checked:bg-blue-100 dark:peer-checked:bg-blue-900/50 peer-checked:border-blue-500 peer-checked:text-blue-800 dark:peer-checked:text-blue-300 transition-all text-xs font-bold flex flex-col items-center"><i class="ph-fill ph-star text-lg mb-1"></i> Proj.</div></label>
+                            <label class="cursor-pointer relative"><input type="radio" name="priority" value="reference" class="peer sr-only"><div class="text-center py-2 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 peer-checked:bg-gray-200 dark:peer-checked:bg-gray-600 peer-checked:border-gray-500 peer-checked:text-gray-800 dark:peer-checked:text-gray-200 transition-all text-xs font-bold flex flex-col items-center"><i class="ph-fill ph-archive text-lg mb-1"></i> Arch.</div></label>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Notes</label>
+                        <textarea id="inputDesc" class="block w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm p-2.5 text-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white" rows="2" placeholder="Details (https:// links allowed)"></textarea>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg font-medium transition-colors">Cancel</button>
+                    <button type="submit" class="px-6 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-md transform hover:scale-[1.02] transition-all">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="manualModal" class="fixed inset-0 bg-black bg-opacity-60 hidden flex items-center justify-center backdrop-blur-sm z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col transform transition-all scale-100 border border-gray-200 dark:border-gray-700">
+            <div class="flex justify-between items-center p-5 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-indigo-50 to-white dark:from-gray-800 dark:to-gray-800 rounded-t-xl">
+                <h2 class="text-2xl font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-2">
+                    <i class="ph-fill ph-book-open text-indigo-600 dark:text-indigo-400"></i> AI Knowledge Hub Manual
+                </h2>
+                <button onclick="closeManual()" class="text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-gray-700 p-2 rounded-full transition">
+                    <i class="ph-bold ph-x text-2xl"></i>
+                </button>
+            </div>
+
+            <div class="p-8 overflow-y-auto custom-scroll manual-content bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 space-y-8">
+                
+                <section>
+                    <h3 class="text-xl font-bold text-indigo-700 dark:text-indigo-300 mb-3 flex items-center gap-2">
+                        <i class="ph-bold ph-cpu"></i> 1. Architecture & Technology
+                    </h3>
+                    <p class="text-sm mb-2">This code is a <strong>Personal Knowledge Management (PKM)</strong> tool, Kanban style, designed to run entirely in the browser (client-side). Basically, you have created a "Hub" or dashboard to organize your interactions with Gemini, coding projects, local files, and web links.</p>
+                    
+                    <div class="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg border border-gray-200 dark:border-gray-600 text-sm">
+                        <ul class="list-disc pl-5 space-y-2">
+                            <li><strong>Single File Application:</strong> Everything (HTML, CSS, JS) lives in one file. It is ultra-portable.</li>
+                            <li><strong>Local Storage:</strong> It uses no external database. All data is stored in your browser's memory under the key <code>geminiHubChats</code>. This makes it fast and private.</li>
+                            <li><strong>Kanban Structure:</strong>
+                                <ul class="list-circle pl-5 mt-1 text-xs text-gray-600 dark:text-gray-400">
+                                    <li><span class="text-purple-600 dark:text-purple-400 font-bold">IDEAS:</span> Backlog. Things you thought of but haven't started.</li>
+                                    <li><span class="text-amber-600 dark:text-amber-400 font-bold">PINS:</span> High Priority. What you need to keep in sight.</li>
+                                    <li><span class="text-blue-600 dark:text-blue-400 font-bold">PROJECTS:</span> Active work (Scripts, budgets, etc.).</li>
+                                    <li><span class="text-gray-600 dark:text-gray-400 font-bold">ARCHIVE:</span> Historical reference or closed topics.</li>
+                                </ul>
+                            </li>
+                            <li><strong>The "Card":</strong> A JSON object containing Title, Hybrid Links (Cloud/Local), Task Checklist, and Metadata (Tags, Favorites).</li>
+                            <li><strong>Smart Automation:</strong>
+                                <ul class="list-circle pl-5 mt-1 text-xs text-gray-600 dark:text-gray-400">
+                                    <li><strong>Auto-Tagging:</strong> If tasks are incomplete, it adds <code>#Pending</code>. If all done, the tag is removed.</li>
+                                    <li><strong>Drag & Drop:</strong> Moving cards updates their priority automatically.</li>
+                                    <li><strong>Backup:</strong> The Export/Import buttons allow you to save your database as a <code>.json</code> file.</li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+                </section>
+
+                <hr class="border-gray-100 dark:border-gray-700">
+
+                <section>
+                    <h3 class="text-xl font-bold text-indigo-700 dark:text-indigo-300 mb-3 flex items-center gap-2">
+                        <i class="ph-bold ph-target"></i> 2. What is this for?
+                    </h3>
+                    <p>It is a hybrid project organizer (Web + Local Files) that allows you to have <strong>visual control</strong> over what you are programming, researching, or managing, without depending on external servers.</p>
+                    <p class="mt-2"><strong>The Problem it Solves:</strong> AI chats (like Gemini or ChatGPT) often lose context after long conversations. By saving specific chats as local files and organizing them here, you preserve the "perfect state" of a project forever.</p>
+                    <p class="mt-2">It is ideal for users managing multiple contexts, such as Python scripts, corporate budgets, hardware research, or academic papers.</p>
+                    <p class="mt-2"><strong>And most importantly,</strong> it helps you organize all the chats you have with Gemini so you don't lose track of each one and their priority for you.</p>
+                </section>
+
+                <hr class="border-gray-100 dark:border-gray-700">
+
+                <section>
+                    <h3 class="text-xl font-bold text-indigo-700 dark:text-indigo-300 mb-3 flex items-center gap-2">
+                        <i class="ph-bold ph-steps"></i> 3. Getting Started (Step-by-Step)
+                    </h3>
+                    
+                    <div class="space-y-4">
+                        <div class="flex gap-3">
+                            <div class="font-bold text-indigo-500 dark:text-indigo-400 text-xl">01</div>
+                            <div>
+                                <h4 class="font-bold text-gray-900 dark:text-white">Create your Workspace</h4>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Create a new folder on your computer named <code>Gemini_Projects</code> (or whatever you prefer). Move this <code>Gemini_Hub.html</code> file inside that folder.</p>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <div class="font-bold text-indigo-500 dark:text-indigo-400 text-xl">02</div>
+                            <div>
+                                <h4 class="font-bold text-gray-900 dark:text-white">Save your Chats</h4>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">When you have a valuable conversation with AI, save the webpage (Ctrl+S) into that same folder.
+                                <br><span class="text-xs bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-300 px-1 rounded">Tip:</span> Use simple names like <code>budget_2026.html</code> or <code>python_script.html</code>.</p>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <div class="font-bold text-indigo-500 dark:text-indigo-400 text-xl">03</div>
+                            <div>
+                                <h4 class="font-bold text-gray-900 dark:text-white">Register in the Hub</h4>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Open the Hub, click <strong>"New Chat"</strong>.
+                                <br>• In <strong>Local File</strong>, type the name of the file you just saved (e.g., <code>budget_2026.html</code>).
+                                <br>• In <strong>Cloud Link</strong>, paste the original URL of the chat (optional but recommended).
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <div class="font-bold text-indigo-500 dark:text-indigo-400 text-xl">04</div>
+                            <div>
+                                <h4 class="font-bold text-gray-900 dark:text-white">Using Cloud Services (OneDrive/Dropbox)</h4>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">To access your files from multiple computers, simply place your <code>Gemini_Projects</code> folder inside your <strong>OneDrive</strong> or <strong>Google Drive</strong> sync folder.</p>
+                                <div class="mt-2 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-400 dark:border-red-600 p-2 text-xs text-red-700 dark:text-red-300">
+                                    <strong>Important:</strong> While OneDrive syncs your HTML files, it does NOT sync the browser's "Local Storage" (where the card organization lives). To move your board organization to another PC, use the <strong>Export Backup</strong> button, save the .json file in your OneDrive, and <strong>Import</strong> it on the other computer.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <hr class="border-gray-100 dark:border-gray-700">
+
+                <section>
+                    <h3 class="text-xl font-bold text-indigo-700 dark:text-indigo-300 mb-3 flex items-center gap-2">
+                        <i class="ph-bold ph-star"></i> 4. Key Features Guide
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div class="flex gap-2">
+                            <div class="text-indigo-500 dark:text-indigo-400"><i class="ph-fill ph-tag text-xl"></i></div>
+                            <div><strong>Smart Tags:</strong> Categorize cards. Click any tag to filter the board instantly.</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <div class="text-yellow-500"><i class="ph-fill ph-star text-xl"></i></div>
+                            <div><strong>Favorites:</strong> Mark top cards. Use the Star filter to see only your favorites.</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <div class="text-blue-500 dark:text-blue-400"><i class="ph-bold ph-cloud text-xl"></i></div>
+                            <div><strong>Hybrid Links:</strong> Direct access to Cloud URLs or Local file paths from the footer.</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <div class="text-red-500 dark:text-red-400"><i class="ph-bold ph-warning text-xl"></i></div>
+                            <div><strong>Auto-Pending:</strong> Cards with unchecked tasks automatically get a "Pending" badge.</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <div class="text-gray-500 dark:text-gray-400"><i class="ph-bold ph-link text-xl"></i></div>
+                            <div><strong>Rich Notes:</strong> The notes field automatically converts URLs (https://...) into clickable links.</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <div class="text-green-600 dark:text-green-400"><i class="ph-bold ph-check-square text-xl"></i></div>
+                            <div><strong>Task Progress:</strong> Visual progress bar updates automatically as you check off items.</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <div class="text-indigo-600 dark:text-indigo-400"><i class="ph-bold ph-hand-grabbing text-xl"></i></div>
+                            <div><strong>Drag & Drop:</strong> Move cards between columns to change priority/status instantly.</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <div class="text-gray-700 dark:text-gray-300"><i class="ph-bold ph-download-simple text-xl"></i></div>
+                            <div><strong>Backup System:</strong> Export your data to JSON to save it or move to another PC.</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <div class="text-gray-500 dark:text-gray-400"><i class="ph-bold ph-pencil-simple text-xl"></i></div>
+                            <div><strong>Edit & Delete:</strong> Use the floating buttons (top-right of card) to manage content.</div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let chats = [];
+        let activeTag = null;
+        let currentEditingTasks = [];
+        let currentEditingTags = []; 
+
+        function init() { 
+            try {
+                // Dark Mode Init
+                if (localStorage.getItem('geminiHubTheme') === 'dark') {
+                    document.documentElement.classList.add('dark');
+                    document.getElementById('themeIcon').classList.replace('ph-moon', 'ph-sun');
+                }
+
+                const stored = localStorage.getItem('geminiHubChats');
+                if (stored) {
+                    try {
+                        const parsed = JSON.parse(stored);
+                        if (Array.isArray(parsed)) {
+                            chats = parsed.filter(item => item && typeof item === 'object');
+                        }
+                    } catch (parseErr) { console.error("JSON Error:", parseErr); chats = []; }
+                }
+                updateAutoTags(); 
+                renderChats();
+            } catch (criticalErr) {
+                console.error("Critical Init Error:", criticalErr);
+                const statsEl = document.getElementById('header-stats');
+                if (statsEl) statsEl.innerHTML = `<span class="text-red-400 font-bold bg-red-900/50 px-2 py-1 rounded">ERROR: ${criticalErr.message}</span>`;
+            }
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const icon = document.getElementById('themeIcon');
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                localStorage.setItem('geminiHubTheme', 'light');
+                icon.classList.replace('ph-sun', 'ph-moon');
+            } else {
+                html.classList.add('dark');
+                localStorage.setItem('geminiHubTheme', 'dark');
+                icon.classList.replace('ph-moon', 'ph-sun');
+            }
+        }
+
+        // --- SMART SEARCH FUNCTIONS ---
+        function getAllAllTags() {
+            const all = new Set(); 
+            if(Array.isArray(chats)) {
+                chats.forEach(c => { 
+                    if(c.tags && Array.isArray(c.tags)) c.tags.forEach(t => { if(typeof t === 'string') all.add(t); }); 
+                }); 
+            }
+            return Array.from(all).sort(); 
+        }
+
+        function handleSearchInput() {
+            const input = document.getElementById('searchInput');
+            const clearBtn = document.getElementById('searchClearBtn');
+            const suggestionBox = document.getElementById('search-tag-suggestions');
+            const val = input.value;
+
+            if (val.length > 0) clearBtn.classList.remove('hidden');
+            else clearBtn.classList.add('hidden');
+
+            if (val.length > 0) {
+                const allTags = getAllAllTags();
+                const matches = allTags.filter(tag => tag.toLowerCase().includes(val.toLowerCase()) && tag !== 'favorites' && tag !== 'Pending');
+                
+                if (matches.length > 0) {
+                    suggestionBox.innerHTML = '';
+                    matches.forEach(tag => {
+                        const div = document.createElement('div');
+                        div.className = 'px-4 py-2 hover:bg-indigo-50 dark:hover:bg-gray-700 cursor-pointer text-sm text-gray-700 dark:text-gray-200 border-b border-gray-100 dark:border-gray-600 last:border-0 flex items-center gap-2';
+                        div.innerHTML = `<i class="ph-bold ph-tag text-indigo-400"></i> ${tag}`;
+                        div.onclick = (e) => { 
+                            e.stopPropagation();
+                            selectSearchTag(tag); 
+                        };
+                        suggestionBox.appendChild(div);
+                    });
+                    suggestionBox.classList.remove('hidden');
+                } else {
+                    suggestionBox.classList.add('hidden');
+                }
+            } else {
+                suggestionBox.classList.add('hidden');
+            }
+            renderChats();
+        }
+
+        function clearSearch() {
+            const input = document.getElementById('searchInput');
+            input.value = '';
+            document.getElementById('searchClearBtn').classList.add('hidden');
+            document.getElementById('search-tag-suggestions').classList.add('hidden');
+            renderChats();
+            input.focus();
+        }
+
+        function selectSearchTag(tag) {
+            setTagFilter(tag); // Activate filter
+            clearSearch();     // Clear text input to remove conflict
+        }
+
+        function closeSearchSuggestions() {
+            document.getElementById('search-tag-suggestions').classList.add('hidden');
+        }
+
+        // --- CORE FUNCTIONS ---
+        function saveData() { 
+            localStorage.setItem('geminiHubChats', JSON.stringify(chats)); 
+            const btn = document.getElementById('btn-export');
+            if (btn) { btn.classList.add('needs-save'); btn.title = "UNSAVED CHANGES! Click to export backup."; }
+        }
+
+        function exportData() {
+            const dataStr = JSON.stringify(chats, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const now = new Date();
+            const timestamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}-${String(now.getMinutes()).padStart(2,'0')}`;
+            const a = document.createElement('a'); a.href = url; a.download = `gemini-hub-backup-${timestamp}.json`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            const btn = document.getElementById('btn-export');
+            if (btn) { btn.classList.remove('needs-save'); btn.title = "Export Backup"; }
+        }
+
+        function importData(input) {
+            const file = input.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const json = JSON.parse(e.target.result);
+                    if (Array.isArray(json)) {
+                        if(confirm('Overwrite current data?')) { 
+                            chats = json.filter(item => item && typeof item === 'object');
+                            localStorage.setItem('geminiHubChats', JSON.stringify(chats)); 
+                            renderChats(); 
+                            const btn = document.getElementById('btn-export');
+                            if (btn) btn.classList.remove('needs-save');
+                            alert('Imported successfully.'); 
+                        }
+                    } else { alert('Invalid format.'); }
+                } catch(err) { alert('Error reading file.'); }
+            }; reader.readAsText(file); input.value = '';
+        }
+
+        function openManual() { document.getElementById('manualModal').classList.remove('hidden'); }
+        function closeManual() { document.getElementById('manualModal').classList.add('hidden'); }
+        document.getElementById('manualModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('manualModal')) closeManual();
+        });
+
+        function updateAutoTags() {
+            let changed = false;
+            if (!Array.isArray(chats)) chats = [];
+            chats.forEach(chat => {
+                if (!chat) return;
+                if (!chat.tags || !Array.isArray(chat.tags)) chat.tags = [];
+                if (!chat.tasks || !Array.isArray(chat.tasks)) chat.tasks = [];
+                const hasPending = chat.tasks.some(t => t && !t.done);
+                const pendingIndex = chat.tags.findIndex(t => (typeof t === 'string' && t.toLowerCase() === 'pending'));
+                if (hasPending && pendingIndex === -1) { chat.tags.push('Pending'); changed = true; }
+                else if (!hasPending && pendingIndex !== -1) { chat.tags.splice(pendingIndex, 1); changed = true; }
+            });
+            if (changed) saveData();
+        }
+
+        function updateHeaderStats(counts) {
+            const total = chats.length;
+            const statsContainer = document.getElementById('header-stats');
+            if (!statsContainer) return;
+            statsContainer.innerHTML = `
+                <span class="font-bold text-indigo-200">Total: ${total}</span>
+                <span class="mx-3 text-indigo-500/50 text-lg">|</span>
+                <div class="flex gap-4">
+                    <span title="Ideas" class="flex items-center gap-1.5"><i class="ph-fill ph-lightbulb text-purple-400 text-lg"></i> Ideas: <span class="font-bold text-white">${counts.idea}</span></span>
+                    <span title="Pins" class="flex items-center gap-1.5"><i class="ph-fill ph-push-pin text-amber-400 text-lg"></i> Pins: <span class="font-bold text-white">${counts.pinned}</span></span>
+                    <span title="Projects" class="flex items-center gap-1.5"><i class="ph-fill ph-star text-blue-400 text-lg"></i> Proj: <span class="font-bold text-white">${counts.important}</span></span>
+                    <span title="Archive" class="flex items-center gap-1.5"><i class="ph-fill ph-archive text-gray-400 text-lg"></i> Arch: <span class="font-bold text-white">${counts.reference}</span></span>
+                </div>
+            `;
+        }
+
+        function linkify(text) {
+            if (!text) return '';
+            return text.replace(/(https?:\/\/[^\s]+)/g, url => `<a href="${url}" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline break-all relative z-10" onclick="event.stopPropagation()">${url}</a>`);
+        }
+
+        function renderTaskEditor() {
+            const list = document.getElementById('taskList');
+            list.innerHTML = '';
+            if (currentEditingTasks.length === 0) {
+                list.innerHTML = '<li class="text-xs text-gray-400 italic text-center py-2">No pending tasks.</li>';
+                return;
+            }
+            currentEditingTasks.forEach((task, index) => {
+                const li = document.createElement('li');
+                li.className = 'flex items-center gap-2 bg-white dark:bg-gray-700 p-2 rounded border border-gray-200 dark:border-gray-600 hover:border-indigo-300 transition-colors group';
+                li.innerHTML = `<input type="checkbox" class="task-checkbox cursor-pointer text-indigo-600 focus:ring-indigo-500 rounded" ${task.done ? 'checked' : ''} onchange="toggleModalTask(${index})"><span class="flex-1 text-sm text-gray-700 dark:text-gray-200 truncate select-text">${task.text}</span><button type="button" onclick="removeModalTask(${index})" class="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><i class="ph-bold ph-x"></i></button>`;
+                list.appendChild(li);
+            });
+        }
+
+        function addModalTask() {
+            const input = document.getElementById('newTaskInput');
+            const text = input.value.trim();
+            if (text) {
+                currentEditingTasks.push({ text: text, done: false });
+                input.value = '';
+                renderTaskEditor();
+                input.focus();
+            }
+        }
+
+        function handleTaskEnter(e) { if (e.key === 'Enter') { e.preventDefault(); addModalTask(); } }
+        function toggleModalTask(index) { currentEditingTasks[index].done = !currentEditingTasks[index].done; renderTaskEditor(); }
+        function removeModalTask(index) { currentEditingTasks.splice(index, 1); renderTaskEditor(); }
+
+        function renderEditingTags() {
+            const container = document.getElementById('activeTagsContainer');
+            container.innerHTML = '';
+            currentEditingTags.forEach((tag, index) => {
+                const chip = document.createElement('div');
+                chip.className = 'flex items-center gap-1 px-2 py-1 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-xs font-medium rounded-full';
+                chip.innerHTML = `<span>#${tag}</span><button type="button" onclick="removeEditingTag(${index})" class="hover:text-indigo-900 focus:outline-none"><i class="ph-bold ph-x"></i></button>`;
+                container.appendChild(chip);
+            });
+        }
+        function addEditingTag(tag) { tag = tag.trim(); if (tag && !currentEditingTags.includes(tag)) { currentEditingTags.push(tag); renderEditingTags(); } document.getElementById('inputTags').value = ''; document.getElementById('tag-suggestions').classList.add('hidden'); }
+        function removeEditingTag(index) { currentEditingTags.splice(index, 1); renderEditingTags(); }
+        function handleTagInput(e) { if (e.key === 'Enter') { e.preventDefault(); if (e.target.value.trim()) addEditingTag(e.target.value.trim()); } if (e.key === 'Backspace' && e.target.value === '' && currentEditingTags.length > 0) removeEditingTag(currentEditingTags.length - 1); }
+
+        function getAllTags() { const all = new Set(); chats.forEach(c => { if(c.tags) c.tags.forEach(t => all.add(t)); }); return Array.from(all).sort(); }
+        function showSuggestions() {
+            const input = document.getElementById('inputTags'); const val = input.value.trim().toLowerCase();
+            const filtered = getAllTags().filter(tag => !currentEditingTags.includes(tag) && (!val || tag.toLowerCase().includes(val)));
+            const box = document.getElementById('tag-suggestions');
+            if (filtered.length === 0) { box.classList.add('hidden'); return; }
+            box.innerHTML = '';
+            filtered.forEach(tag => {
+                const div = document.createElement('div'); div.className = 'suggestion-item px-4 py-2 cursor-pointer text-sm text-gray-700 dark:text-gray-200'; div.innerText = tag;
+                div.onclick = (e) => { e.stopPropagation(); addEditingTag(tag); input.focus(); }; box.appendChild(div);
+            });
+            box.classList.remove('hidden');
+        }
+        function closeSuggestions() { setTimeout(() => document.getElementById('tag-suggestions').classList.add('hidden'), 200); }
+
+        function drag(ev, id) { ev.dataTransfer.setData("text/plain", id); setTimeout(() => ev.target.classList.add('dragging'), 0); }
+        function dragEnd(ev) { ev.target.classList.remove('dragging'); document.querySelectorAll('.drop-zone-active').forEach(el => el.classList.remove('drop-zone-active')); }
+        function allowDrop(ev) { ev.preventDefault(); ev.currentTarget.classList.add('drop-zone-active'); }
+        function leaveDrop(ev) { ev.currentTarget.classList.remove('drop-zone-active'); }
+        function drop(ev, newPriority) {
+            ev.preventDefault(); ev.currentTarget.classList.remove('drop-zone-active');
+            const id = parseInt(ev.dataTransfer.getData("text/plain"));
+            const chatIndex = chats.findIndex(c => c.id === id);
+            if (chatIndex > -1 && chats[chatIndex].priority !== newPriority) { chats[chatIndex].priority = newPriority; saveData(); renderChats(); }
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            const editId = document.getElementById('editId').value;
+            const title = document.getElementById('inputTitle').value;
+            let path = document.getElementById('inputPath').value.trim();
+            const link = document.getElementById('inputLink').value.trim();
+            const priority = document.querySelector('input[name="priority"]:checked').value;
+            const desc = document.getElementById('inputDesc').value;
+            let tags = currentEditingTags;
+
+            const pendingTasks = currentEditingTasks.filter(t => !t.done).length;
+            tags = tags.filter(t => t.toLowerCase() !== 'pending');
+            if (pendingTasks > 0) tags.push('Pending');
+
+            if (path && !path.toLowerCase().endsWith('.html') && !path.toLowerCase().endsWith('.htm')) path += '.html';
+
+            const chatData = { title, path, link, priority, desc, tags, tasks: currentEditingTasks };
+
+            if (editId) {
+                const index = chats.findIndex(c => c.id == editId);
+                if (index !== -1) chats[index] = { ...chats[index], ...chatData };
+            } else {
+                chats.push({ id: Date.now(), ...chatData, date: new Date().toLocaleDateString() });
+            }
+            saveData();
+            closeModal();
+            renderChats();
+        }
+
+        function deleteChat(id) { if(confirm('Delete this card?')) { chats = chats.filter(c => c.id !== id); saveData(); renderChats(); } }
+        
+        function toggleFavorite(e, id) {
+            e.stopPropagation(); const index = chats.findIndex(c => c.id === id); if(index === -1) return;
+            let tags = chats[index].tags || [];
+            if (tags.includes('favorites')) tags = tags.filter(t => t !== 'favorites');
+            else tags.push('favorites');
+            chats[index].tags = tags; saveData(); renderChats();
+        }
+
+        function setTagFilter(tag) { activeTag = (activeTag === tag) ? null : tag; renderChats(); }
+
+        function renderTagFilters(allTags, pendingCount, favCount) {
+            const container = document.getElementById('tag-filters');
+            const statusContainer = document.getElementById('status-filters');
+            container.innerHTML = '';
+            statusContainer.innerHTML = '';
+            const allActive = activeTag === null;
+            const btnClass = allActive ? 'bg-gray-800 dark:bg-gray-700 text-white border-gray-800 dark:border-gray-600 cursor-default' : 'bg-white dark:bg-gray-800 text-rose-600 dark:text-rose-400 border-rose-300 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-900/20 hover:border-rose-500 font-extrabold';
+            container.innerHTML += `<button onclick="setTagFilter(null)" class="px-3 py-1 rounded-full text-xs font-bold border transition-colors ${btnClass} whitespace-nowrap flex items-center gap-1 shadow-sm shrink-0"><i class="ph-bold ${allActive ? 'ph-circles-four' : 'ph-x'}"></i> ${allActive ? 'All' : 'Clear Filter'}</button><div class="w-px h-5 bg-gray-300 dark:bg-gray-600 mx-1 shrink-0"></div>`;
+            allTags.forEach(tag => {
+                if (tag === 'favorites' || tag.toLowerCase() === 'pending') return; 
+                const isActive = activeTag === tag;
+                const btnClassTag = isActive ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-indigo-300 dark:hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20';
+                container.innerHTML += `<button onclick="setTagFilter('${tag}')" class="px-3 py-1 rounded-full text-xs font-bold border transition-all ${btnClassTag} whitespace-nowrap flex items-center shrink-0">#${tag}</button>`;
+            });
+            const isPendingActive = activeTag === 'Pending';
+            const pendingClass = isPendingActive ? 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-200 border-red-400 shadow-inner' : 'bg-white dark:bg-gray-800 text-red-500 dark:text-red-400 border-gray-200 dark:border-gray-600 hover:border-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20';
+            statusContainer.innerHTML += `<button onclick="setTagFilter('Pending')" class="px-3 py-1 rounded-full text-xs font-bold border transition-all ${pendingClass} whitespace-nowrap flex items-center gap-1" title="View pending"><i class="ph-bold ph-warning text-lg"></i> Pending (${pendingCount})</button>`;
+            const isFavActive = activeTag === 'favorites';
+            const favClass = isFavActive ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-200 border-yellow-400 shadow-inner' : 'bg-white dark:bg-gray-800 text-yellow-500 dark:text-yellow-400 border-gray-200 dark:border-gray-600 hover:border-yellow-400 hover:text-yellow-600 dark:hover:text-yellow-300 hover:bg-yellow-50 dark:hover:bg-yellow-900/20';
+            statusContainer.innerHTML += `<button onclick="setTagFilter('favorites')" class="px-3 py-1 rounded-full text-xs font-bold border transition-all ${favClass} whitespace-nowrap flex items-center gap-1" title="View favorites"><i class="ph-fill ph-star text-lg"></i> Favorites (${favCount})</button>`;
+        }
+
+        function renderChats() {
+            try {
+                const cols = { idea: document.getElementById('col-idea'), pinned: document.getElementById('col-pinned'), important: document.getElementById('col-important'), reference: document.getElementById('col-reference') };
+                const searchVal = document.getElementById('searchInput').value.toLowerCase();
+                Object.values(cols).forEach(el => el.innerHTML = '');
+                let counts = { idea: 0, pinned: 0, important: 0, reference: 0 };
+                let allTags = new Set();
+                let pendingCount = 0;
+                let favCount = 0;
+
+                chats.forEach(chat => {
+                    if (!chat) return;
+                    const cTitle = chat.title || '';
+                    const cDesc = chat.desc || '';
+                    const matchesSearch = !searchVal || (cTitle.toLowerCase().includes(searchVal) || cDesc.toLowerCase().includes(searchVal));
+                    
+                    if (matchesSearch) {
+                        if (chat.tags) {
+                            chat.tags.forEach(t => allTags.add(t));
+                            if (chat.tags.some(t => (typeof t === 'string' && t.toLowerCase() === 'pending'))) pendingCount++;
+                            if (chat.tags.includes('favorites')) favCount++;
+                        }
+                    }
+
+                    if (!matchesSearch) return;
+                    if (activeTag && (!chat.tags || !chat.tags.includes(activeTag))) return;
+                    
+                    if (!counts.hasOwnProperty(chat.priority)) chat.priority = 'reference';
+                    counts[chat.priority]++;
+                    cols[chat.priority].innerHTML += createCard(chat);
+                });
+
+                document.getElementById('count-idea').innerText = counts.idea;
+                document.getElementById('count-pin').innerText = counts.pinned;
+                document.getElementById('count-imp').innerText = counts.important;
+                document.getElementById('count-ref').innerText = counts.reference;
+                
+                renderTagFilters(Array.from(allTags).sort(), pendingCount, favCount);
+                updateHeaderStats(counts);
+            } catch (renderErr) { console.error("Render Error:", renderErr); }
+        }
+
+        function createCard(chat) {
+            const linkStr = chat.link || '';
+            const pathStr = chat.path || '';
+            const hasLink = linkStr.length > 0;
+            const hasPath = pathStr.length > 0;
+            
+            let titleHtml;
+            if (hasLink || hasPath) {
+                 const finalUrl = hasLink ? linkStr : pathStr;
+                 titleHtml = `<a href="${finalUrl}" target="_blank" class="font-bold text-gray-800 dark:text-gray-100 text-lg leading-tight transition-colors cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 block w-full" title="${chat.title}">${chat.title}</a>`;
+            } else {
+                 titleHtml = `<span class="font-bold text-gray-800 dark:text-gray-100 text-lg leading-tight cursor-default block w-full" title="${chat.title}">${chat.title}</span>`;
+            }
+            
+            const cloudBtn = hasLink ? `<a href="${linkStr}" target="_blank" title="Open in Cloud" class="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 rounded border border-blue-100 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/50 hover:border-blue-300 transition-colors flex items-center gap-1 text-[10px]"><i class="ph-bold ph-cloud"></i> Cloud</a>` : '';
+            const localIcon = hasPath ? `<span class="flex items-center gap-1 truncate max-w-[120px] text-gray-500 dark:text-gray-400" title="Local File"><i class="ph-duotone ph-desktop text-gray-400 dark:text-gray-500"></i> ${pathStr}</span>` : `<span class="flex items-center gap-1 text-gray-400 dark:text-gray-600 italic"><i class="ph-duotone ph-warning-circle"></i> No local file</span>`;
+
+            let tagsHtml = '';
+            if (chat.tags && chat.tags.length > 0) {
+                tagsHtml = `<div class="flex flex-wrap gap-1 mt-2 mb-1">`;
+                chat.tags.forEach(tag => {
+                    if (typeof tag !== 'string') return;
+                    if (tag === 'favorites' || tag.toLowerCase() === 'pending') return;
+                    let tagClass = 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 border-teal-100 dark:border-teal-800 hover:bg-teal-100 dark:hover:bg-teal-900/50 hover:border-teal-300';
+                    tagsHtml += `<button onclick="setTagFilter('${tag}')" class="px-1.5 py-0.5 text-[10px] rounded font-medium border transition-colors cursor-pointer ${tagClass}">#${tag}</button>`
+                });
+                tagsHtml += `</div>`;
+            }
+
+            let progressHtml = '';
+            if (chat.tasks && chat.tasks.length > 0) {
+                const total = chat.tasks.length;
+                const done = chat.tasks.filter(t => t.done).length;
+                const percent = Math.round((done / total) * 100);
+                const colorClass = percent === 100 ? 'bg-green-600' : 'bg-green-400 dark:bg-green-500';
+                const textClass = percent === 100 ? 'text-green-700 dark:text-green-400 font-bold' : 'text-gray-500 dark:text-gray-400';
+                progressHtml = `<div class="mt-2 mb-1"><div class="flex justify-between text-[10px] mb-0.5 ${textClass}"><span class="flex items-center gap-1"><i class="ph-bold ph-check-square"></i> Tasks</span><span>${done}/${total} (${percent}%)</span></div><div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5"><div class="${colorClass} h-1.5 rounded-full transition-all duration-500" style="width: ${percent}%"></div></div></div>`;
+            }
+
+            const descHtml = chat.desc ? `<p class="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mt-1">${linkify(chat.desc)}</p>` : '';
+            
+            const isFav = chat.tags && chat.tags.includes('favorites');
+            const starIcon = isFav ? '<i class="ph-fill ph-star text-yellow-400 text-xl drop-shadow-sm"></i>' : '<i class="ph-bold ph-star text-yellow-400/60 hover:text-yellow-400 text-xl transition-colors"></i>';
+            
+            const isPending = chat.tags && chat.tags.some(t => (typeof t === 'string' && t.toLowerCase() === 'pending'));
+            const pendingBadge = isPending ? `<div class="flex items-center gap-1 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide cursor-pointer hover:bg-red-100 transition-colors" onclick="setTagFilter('Pending')" title="View pending"><i class="ph-fill ph-warning text-sm"></i> PENDING</div>` : '';
+
+            return `
+                <div class="card-${chat.priority} card-base card-hover p-4 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 relative group flex flex-col gap-1" draggable="true" ondragstart="drag(event, ${chat.id})" ondragend="dragEnd(event)">
+                    <div class="absolute -top-3 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-white dark:bg-gray-700 rounded-lg p-1 shadow-md border border-gray-200 dark:border-gray-600 z-40">
+                         <button onclick="openModal('edit', ${chat.id})" class="p-1 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/50 rounded" title="Edit"><i class="ph-bold ph-pencil-simple"></i></button>
+                         <button onclick="deleteChat(${chat.id})" class="p-1 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/50 rounded" title="Delete"><i class="ph-bold ph-trash"></i></button>
+                    </div>
+                    <div class="flex justify-between items-start mb-1">
+                        ${titleHtml}
+                    </div>
+                    ${tagsHtml}
+                    ${descHtml}
+                    ${progressHtml}
+                    <div class="mt-auto pt-2 flex items-center justify-between text-[10px] font-mono uppercase tracking-wide border-t border-gray-50 dark:border-gray-700 mt-2">
+                        <span class="text-gray-400 dark:text-gray-500 flex items-center gap-1"><i class="ph-bold ph-calendar-blank"></i> ${chat.date}</span>
+                        <div class="flex items-center gap-2">
+                            ${localIcon}${cloudBtn}
+                            ${pendingBadge}
+                            <button onclick="toggleFavorite(event, ${chat.id})" title="${isFav ? 'Remove from Favorites' : 'Mark as Favorite'}" class="focus:outline-none transform active:scale-90 transition-transform">${starIcon}</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        const modal = document.getElementById('addModal');
+        const form = document.getElementById('chatForm');
+        function openModal(mode = 'create', id = null) {
+            modal.classList.remove('hidden');
+            form.reset();
+            document.getElementById('editId').value = '';
+            document.getElementById('tag-suggestions').classList.add('hidden');
+            document.getElementById('inputTags').value = '';
+            if (mode === 'edit' && id) {
+                const chat = chats.find(c => c.id === id);
+                if (chat) {
+                    document.getElementById('modalTitle').innerText = 'Edit';
+                    document.getElementById('editId').value = chat.id;
+                    document.getElementById('inputTitle').value = chat.title;
+                    document.getElementById('inputPath').value = chat.path || '';
+                    document.getElementById('inputLink').value = chat.link || '';
+                    document.getElementById('inputDesc').value = chat.desc;
+                    currentEditingTags = JSON.parse(JSON.stringify(chat.tags || []));
+                    renderEditingTags();
+                    const radios = document.getElementsByName('priority');
+                    for(let r of radios) { if(r.value === chat.priority) r.checked = true; }
+                    currentEditingTasks = JSON.parse(JSON.stringify(chat.tasks || []));
+                    renderTaskEditor();
+                }
+            } else {
+                document.getElementById('modalTitle').innerText = 'Add New';
+                document.querySelector('input[value="idea"]').checked = true;
+                currentEditingTasks = [];
+                renderTaskEditor();
+                currentEditingTags = [];
+                renderEditingTags();
+            }
+        }
+        function closeModal() { modal.classList.add('hidden'); }
+        modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+        init();
+    </script>
+</body>
+</html>
